@@ -140,8 +140,10 @@ test_pipeline = [
 ]
 
 dataset_type = 'OCRDataset'
-train_img_prefix = '/data_0/yejiaquan/data/TableRecognization/pubtabnet/train/'
-train_anno_file1 = '/data_0/yejiaquan/data/TableRecognization/mergeStructLabelsAddEmptyEsb/'
+# train_img_prefix = '/data_0/yejiaquan/data/TableRecognization/pubtabnet/train/'
+# train_anno_file1 = '/data_0/yejiaquan/data/TableRecognization/mergeStructLabelsAddEmptyEsb/'
+train_img_prefix = '/media/ubuntu/Date12/TableStruct/data/train/'
+train_anno_file1 = '/media/ubuntu/Date12/TableStruct/data/tablemaster/split_0.9/cell_box/StructureLabelAddEmptyBbox_train/'
 train1 = dict(
     type=dataset_type,
     img_prefix=train_img_prefix,
@@ -158,8 +160,10 @@ train1 = dict(
     pipeline=train_pipeline,
     test_mode=False)
 
-valid_img_prefix = '/data_0/yejiaquan/data/TableRecognization/pubtabnet/val/'
-valid_anno_file1 = '/data_0/yejiaquan/data/TableRecognization/mergeStructLabelsAddEmptyEsb_val/'
+# valid_img_prefix = '/data_0/yejiaquan/data/TableRecognization/pubtabnet/val/'
+# valid_anno_file1 = '/data_0/yejiaquan/data/TableRecognization/mergeStructLabelsAddEmptyEsb_val/'
+valid_img_prefix = '/media/ubuntu/Date12/TableStruct/data/train/'
+valid_anno_file1 = '/media/ubuntu/Date12/TableStruct/data/tablemaster/split_0.9/cell_box/StructureLabelAddEmptyBbox_valid/'
 valid = dict(
     type=dataset_type,
     img_prefix=valid_img_prefix,
@@ -177,8 +181,10 @@ valid = dict(
     dataset_info='table_master_dataset',
     test_mode=True)
 
-test_img_prefix = '/data_0/yejiaquan/data/TableRecognization/pubtabnet/val/'
-test_anno_file1 = '/data_0/yejiaquan/data/TableRecognization/mergeStructLabelsAddEmptyEsb_val/'
+# test_img_prefix = '/data_0/yejiaquan/data/TableRecognization/pubtabnet/val/'
+# test_anno_file1 = '/data_0/yejiaquan/data/TableRecognization/mergeStructLabelsAddEmptyEsb_val/'
+test_img_prefix = '/media/ubuntu/Date12/TableStruct/data/train/'
+test_anno_file1 = '/media/ubuntu/Date12/TableStruct/data/tablemaster/split_0.9/cell_box/StructureLabelAddEmptyBbox_valid/'
 test = dict(
     type=dataset_type,
     img_prefix=test_img_prefix,
@@ -215,7 +221,7 @@ lr_config = dict(
     warmup_iters=50,
     warmup_ratio=1.0 / 3,
     step=[12, 15])
-total_epochs = 17
+total_epochs = 30
 
 # evaluation
 evaluation = dict(interval=1, metric='acc')
@@ -237,7 +243,7 @@ log_config = dict(
 # yapf:enable
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-load_from = None
+load_from = './checkpoints/pubtabnet_epoch_16_0.7767.pth'
 resume_from = None
 workflow = [('train', 1)]
 

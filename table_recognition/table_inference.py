@@ -193,9 +193,11 @@ class Runner:
         self.pse_config = cfg['pse_config']
         self.master_config = cfg['master_config']
         self.structure_master_config = cfg['structure_master_config']
+
         self.pse_ckpt = cfg['pse_ckpt']
         self.master_ckpt = cfg['master_ckpt']
         self.structure_master_ckpt = cfg['structure_master_ckpt']
+
         self.end2end_result_folder = cfg['end2end_result_folder']
         self.structure_master_result_folder = cfg['structure_master_result_folder']
 
@@ -247,7 +249,7 @@ class Runner:
             elif os.path.isdir(path):
                 all_results = dict()
                 print('Folder files in end2end prediction ...')
-                search_path = os.path.join(path, '*.png')
+                search_path = os.path.join(path, '*.jpg')
                 files = glob.glob(search_path)
                 for file in tqdm(files):
                     _, result_dict = self.end2end.predict(file)
@@ -372,7 +374,7 @@ class Runner:
             elif os.path.isdir(path):
                 all_results = dict()
                 print('Folder files in structure master prediction ...')
-                search_path = os.path.join(path, '*.png')
+                search_path = os.path.join(path, '*.jpg')
                 files = glob.glob(search_path)
                 for file in tqdm(files):
                     _, result_dict = self.master_structure_inference.predict_single_file(file)
@@ -386,6 +388,7 @@ class Runner:
             print('Chunks files in structure master prediction ...')
             for i, p in enumerate(path):
                 _, result_dict = self.master_structure_inference.predict_single_file(p)
+                # result_dict : {"file_name": {"text": '<thead></thead>', 'bbox':[[x0, y0, w, h]]}}
                 all_results.update(result_dict)
                 if gpu_idx is not None:
                     print("[GPU_{} : {} / {}] {} file structure inference. ".format(gpu_idx, i+1, len(path), p))
@@ -416,7 +419,7 @@ class Runner:
         :return:
         """
         print("Divide files to chunks for multiply gpu device inference.")
-        file_paths = glob.glob(folder + '*.png')
+        file_paths = glob.glob(os.path.join(folder, '*.jpg'))
         counts = len(file_paths)
         nums_per_chunk = counts // chunks_nums
         img_chunks = []
@@ -489,11 +492,13 @@ if __name__ == '__main__':
         'structure_master_config': './configs/textrecog/master/table_master_ResnetExtract_Ranger_0705.py',
         'pse_ckpt': '/data_0/dataset/demo_model_v1/pse_epoch_600.pth',
         'master_ckpt': '/data_0/dataset/demo_model_v1/master_epoch_6.pth',
-        'structure_master_ckpt': '/data_0/dataset/demo_model_v1/tablemaster_best.pth',
-        'end2end_result_folder': '/data_0/work_dirs/end2end_val_result',
-        'structure_master_result_folder': '/data_0/work_dirs/structure_val_result',
+        # 'structure_master_ckpt': '/data_0/dataset/demo_model_v1/tablemaster_best.pth',
+        'structure_master_ckpt': './checkpoints/epoch_21_0.9118.pth',
 
-        'test_folder': '/data_0/dataset/pubtabnet/val/',
+        'end2end_result_folder': './output/end2end_val_result',
+        'structure_master_result_folder': './output/structure_result/test_A_jpg',
+
+        'test_folder': '/media/ubuntu/Date12/TableStruct/data/test_A_jpg',
         'chunks_nums': chunk_nums
     }
 
