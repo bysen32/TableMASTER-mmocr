@@ -64,7 +64,7 @@ model = dict(
 
 
 TRAIN_STATE = True
-img_norm_cfg = dict(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0])
+img_norm_cfg = dict(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(
@@ -231,7 +231,6 @@ log_config = dict(
     interval=100,
     hooks=[
         dict(type='TextLoggerHook')
-
     ])
 
 # yapf:enable
