@@ -64,7 +64,7 @@ model = dict(
 
 
 TRAIN_STATE = True
-img_norm_cfg = dict(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+img_norm_cfg = dict(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0])
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(
@@ -139,17 +139,15 @@ test_pipeline = [
         ]),
 ]
 
-dataset_type = 'OCRDataset'
-# train_img_prefix = '/data_0/yejiaquan/data/TableRecognization/pubtabnet/train/'
-# train_anno_file1 = '/data_0/yejiaquan/data/TableRecognization/mergeStructLabelsAddEmptyEsb/'
-train_img_prefix = '/media/ubuntu/Date12/TableStruct/data/train/'
-train_anno_file1 = '/media/ubuntu/Date12/TableStruct/data/tablemaster/split_0.9/cell_box/StructureLabelAddEmptyBbox_train/'
+dataset_type = 'TEDSDataset'
+train_img_prefix = '/media/ubuntu/Date12/TableStruct/new_data/train_jpg480max/'
+train_anno_file1 = '/media/ubuntu/Date12/TableStruct/new_data/tablemaster/10fold2/cell_box_label/StructureLabelAddEmptyBbox_train/'
 train1 = dict(
     type=dataset_type,
     img_prefix=train_img_prefix,
     ann_file=train_anno_file1,
     loader=dict(
-        type='TableHardDiskLoader',
+        type='JsonLoader',
         repeat=1,
         max_seq_len=max_seq_len,
         parser=dict(
@@ -160,16 +158,14 @@ train1 = dict(
     pipeline=train_pipeline,
     test_mode=False)
 
-# valid_img_prefix = '/data_0/yejiaquan/data/TableRecognization/pubtabnet/val/'
-# valid_anno_file1 = '/data_0/yejiaquan/data/TableRecognization/mergeStructLabelsAddEmptyEsb_val/'
-valid_img_prefix = '/media/ubuntu/Date12/TableStruct/data/train/'
-valid_anno_file1 = '/media/ubuntu/Date12/TableStruct/data/tablemaster/split_0.9/cell_box/StructureLabelAddEmptyBbox_valid/'
+valid_img_prefix = '/media/ubuntu/Date12/TableStruct/new_data/train_jpg480max/'
+valid_anno_file1 = '/media/ubuntu/Date12/TableStruct/new_data/tablemaster/10fold2/cell_box_label/StructureLabelAddEmptyBbox_valid/'
 valid = dict(
     type=dataset_type,
     img_prefix=valid_img_prefix,
     ann_file=valid_anno_file1,
     loader=dict(
-        type='TableHardDiskLoader',
+        type='JsonLoader',
         repeat=1,
         max_seq_len=max_seq_len,
         parser=dict(
@@ -181,16 +177,14 @@ valid = dict(
     dataset_info='table_master_dataset',
     test_mode=True)
 
-# test_img_prefix = '/data_0/yejiaquan/data/TableRecognization/pubtabnet/val/'
-# test_anno_file1 = '/data_0/yejiaquan/data/TableRecognization/mergeStructLabelsAddEmptyEsb_val/'
-test_img_prefix = '/media/ubuntu/Date12/TableStruct/data/train/'
-test_anno_file1 = '/media/ubuntu/Date12/TableStruct/data/tablemaster/split_0.9/cell_box/StructureLabelAddEmptyBbox_valid/'
+test_img_prefix = '/media/ubuntu/Date12/TableStruct/new_data/train_jpg480max/'
+test_anno_file1 = '/media/ubuntu/Date12/TableStruct/new_data/tablemaster/10fold2/cell_box_label/StructureLabelAddEmptyBbox_valid/'
 test = dict(
     type=dataset_type,
     img_prefix=test_img_prefix,
     ann_file=test_anno_file1,
     loader=dict(
-        type='TableHardDiskLoader',
+        type='JsonLoader',
         repeat=1,
         max_seq_len=max_seq_len,
         parser=dict(
@@ -224,13 +218,13 @@ lr_config = dict(
 total_epochs = 30
 
 # evaluation
-evaluation = dict(interval=1, metric='acc')
+evaluation = dict(interval=2, metric='acc')
 
 # fp16
 fp16 = dict(loss_scale='dynamic')
 
 # checkpoint setting
-checkpoint_config = dict(interval=1)
+checkpoint_config = dict(interval=2)
 
 # log_config
 log_config = dict(
@@ -243,8 +237,10 @@ log_config = dict(
 # yapf:enable
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
+load_from = None
 load_from = './checkpoints/pubtabnet_epoch_16_0.7767.pth'
 resume_from = None
+# resume_from = './checkpoints/epoch_30_val93.03.pth'
 workflow = [('train', 1)]
 
 # if raise find unused_parameters, use this.
