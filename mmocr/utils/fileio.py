@@ -1,5 +1,6 @@
 import os
 import glob
+import json
 import mmcv
 
 
@@ -84,6 +85,43 @@ def list_from_folder_table(folder, max_seq_len):
         # process display
         count += 1
         if count % 10000 == 0:
+            print("Loading table data, process : {}".format(count))
+
+    # display samples number of dataset
+    print("Load {} samples from folder : {}".format(len(item_list), folder))
+
+    return item_list
+
+def list_from_folder_table_json(folder, max_seq_len):
+    """Load table structure label files and parse the content as a list of dict. The
+    advance parse will do in parser object.
+
+    Args:
+        folder (str): label files folder.
+        max_seq_len (int): max length of sequence.
+
+    Returns:
+        list[str]: A list of dict.
+    """
+    item_list = []
+    bbox_split = ','
+    folder = os.path.join(folder, '*.json')
+    files = glob.glob(folder)
+    count = 0
+    print("Loading table data ...")
+    for file in files:
+        json_info = json.load(open(file, 'r'))
+
+        # filter the samples, which length is greater than max_seq_len-2.
+        # max_seq_len-2 because of include the <SOS> and <EOS>.
+        if len(json_info['label'].split(',')) > max_seq_len-2:
+            continue
+        
+        item_list.append(json_info)
+
+        # process display
+        count += 1
+        if count % 2000 == 0:
             print("Loading table data, process : {}".format(count))
 
     # display samples number of dataset

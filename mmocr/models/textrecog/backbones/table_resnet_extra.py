@@ -70,6 +70,7 @@ def get_gcb_config(gcb_config, layer):
 class TableResNetExtra(nn.Module):
 
     def __init__(self, layers, input_dim=3, gcb_config=None):
+        # print(gcb_config)
         assert len(layers) >= 4
 
         super(TableResNetExtra, self).__init__()
@@ -111,6 +112,9 @@ class TableResNetExtra(nn.Module):
         self.conv6 = nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn6 = nn.BatchNorm2d(512)
         self.relu6 = nn.ReLU(inplace=True)
+
+        self.last_pool = gcb_config.get('last_pool', False)
+        self.maxpool_last = nn.MaxPool2d(kernel_size=2, stride=2)
 
     def init_weights(self, pretrained=None):
         for m in self.modules():
@@ -173,12 +177,21 @@ class TableResNetExtra(nn.Module):
         x = self.bn5(x)
         x = self.relu5(x)
 
+        #########
+        if self.last_pool:
+            x = self.maxpool_last(x)
+
         x = self.layer4(x)
         x = self.conv6(x)
         x = self.bn6(x)
         x = self.relu6(x)
         f.append(x)
         # (6, 40)
+
+        # if self.last_pool:
+        #     x = self.maxpool_last(x)
+
+        # print(f[-1].shape)
 
         return f
 

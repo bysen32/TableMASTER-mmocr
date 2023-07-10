@@ -43,9 +43,6 @@ class ConcatDataset(_ConcatDataset):
                 flags.append(datasets[i].flag)
             self.flag = np.concatenate(flags)
 
-        # add best accuracy logger.
-        self.best_total_eval_results = dict()
-
     def get_cat_ids(self, idx):
         """Get category ids of concatenated dataset by index.
 
@@ -107,33 +104,9 @@ class ConcatDataset(_ConcatDataset):
                     results_per_dataset, logger=logger, **kwargs)
                 dataset_idx += 1
                 for k, v in eval_results_per_dataset.items():
-                    if dataset.dataset_info is None:
-                        total_eval_results.update({f'{dataset_idx}_{k}': v})
-                    else:
-                        # add dataset name in validation show.
-                        total_eval_results.update({f'{dataset_idx}_[{dataset.dataset_info}]_{k}': v})
+                    total_eval_results.update({f'{dataset_idx}_{k}': v})
 
-            # update best accuracy, only report word_acc_ignore_case_symbol
-            for key, this_acc in total_eval_results.items():
-                if not 'word_acc_ignore_case_symbol' in key:
-                    continue
-                else:
-                    if self.best_total_eval_results.get(key, 0.) < this_acc:
-                        self.best_total_eval_results[key] = this_acc
-
-            # print log of best accuracy, and mean best accuracy
-            mean_best_total_eval_acc = 0.
-            for k, v in self.best_total_eval_results.items():
-                print_log(f'\nBest Accuracy of {k} is {v} now', logger=logger)
-                mean_best_total_eval_acc += v
-            if len(self.best_total_eval_results)==0:
-                mean_best_total_eval_acc = 0.
-            else:
-                mean_best_total_eval_acc = \
-                    mean_best_total_eval_acc / len(self.best_total_eval_results)
-            print_log(f'\nMean Best Accuracy of is {mean_best_total_eval_acc}.', logger=logger)
             return total_eval_results
-
         elif any([isinstance(ds, CocoDataset) for ds in self.datasets]):
             raise NotImplementedError(
                 'Evaluating concatenated CocoDataset as a whole is not'

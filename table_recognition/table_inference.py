@@ -21,12 +21,11 @@ from table_recognition.utils import detect_visual, end2end_visual, structure_vis
 # sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
 
 def build_model(config_file, checkpoint_file):
-    device = 'cpu'
-    model = init_detector(config_file, checkpoint=checkpoint_file, device=device)
+    # device = 'cpu' ???
+    model = init_detector(config_file, checkpoint=checkpoint_file)
 
     if model.cfg.data.test['type'] == 'ConcatDataset':
-        model.cfg.data.test.pipeline = model.cfg.data.test['datasets'][
-            0].pipeline
+        model.cfg.data.test.pipeline = model.cfg.data.test['datasets'][0].pipeline
 
     return model
 
@@ -483,22 +482,30 @@ if __name__ == '__main__':
     # Runner
     chunk_nums = int(sys.argv[1])
     chunk_id = int(sys.argv[2])
-    # 0: detect  1: recognize  2:structure
-    task_id = int(sys.argv[3])
 
     cfg = {
         'pse_config': './configs/textdet/psenet/psenet_r50_fpnf_600e_pubtabnet.py',
         'master_config': './configs/textrecog/master/master_lmdb_ResnetExtra_tableRec_dataset_dynamic_mmfp16.py',
-        'structure_master_config': './configs/textrecog/master/table_master_ResnetExtract_Ranger_0705.py',
         'pse_ckpt': '/data_0/dataset/demo_model_v1/pse_epoch_600.pth',
         'master_ckpt': '/data_0/dataset/demo_model_v1/master_epoch_6.pth',
-        # 'structure_master_ckpt': '/data_0/dataset/demo_model_v1/tablemaster_best.pth',
-        'structure_master_ckpt': './checkpoints/epoch_21_0.9118.pth',
-
         'end2end_result_folder': './output/end2end_val_result',
-        'structure_master_result_folder': './output/structure_result/test_A_jpg',
 
-        'test_folder': '/media/ubuntu/Date12/TableStruct/data/test_A_jpg',
+        # -----------  checkpoint --------------
+        # 'structure_master_ckpt': '/data_0/dataset/demo_model_v1/tablemaster_best.pth',
+        # 'structure_master_ckpt': './checkpoints/epoch_22_val92.12.pth', # new TEDsmetric 07/04
+        # 'structure_master_ckpt': './checkpoints/epoch_30_val93.03.pth', # new TEDsmetric 07/06 train/test on 480 -> [91.8]
+        # 'structure_master_ckpt': './checkpoints/epoch_21_val94.78_test91.93.pth', # new TEDsmetric 07/04
+
+        # ↓ ---- new TEDsmetric 07/08 | train/test on 480 | 10fold0--- ↓ # valid93.98 test 92.189 >> 1st. 92.233
+        # 'structure_master_ckpt': './checkpoints/epoch_18_val93.98_10fold0.pth',
+        # ↓ ---- new TEDsmetric 07/08 | train/test on 480 | 10fold1--- ↓ # valid92.90 test 92.203 >> 1st. 92.233
+        # 'structure_master_ckpt': './checkpoints/epoch_30_val92.90_10fold1.pth',
+        # ↓ ---- new TEDsmetric 07/09 | train/test on 480 | 10fold2--- ↓ # valid92.87 test ? >> 1st. ?
+        'structure_master_ckpt': './checkpoints/epoch_22_val93.64_10fold0.pth',
+        'structure_master_config': './configs/textrecog/master/table_master_ResnetExtract_Ranger_0705.py',
+        'structure_master_result_folder': './output/structure_result/test_A_jpg480max',
+
+        'test_folder': '/media/ubuntu/Date12/TableStruct/new_data/test_A_jpg480max',
         'chunks_nums': chunk_nums
     }
 
@@ -507,21 +514,6 @@ if __name__ == '__main__':
     # runner.run(test_folder)
 
     runner = Runner(cfg)
-    if task_id == 0:
-        # detection task
-        runner.run_detect_single_chunk(chunk_id=chunk_id)
-    elif task_id == 1:
-        # recognition task, one gpu run
-        nums_det_res_file = 2
-        runner.run_recognize_single_chunk(chunk_id=0, nums_det_result_part=nums_det_res_file)
-    elif task_id == 2:
-        # structure task
-        runner.run_structure_single_chunk(chunk_id=chunk_id)
-
-
-
-
-
-
+    runner.run_structure_single_chunk(chunk_id=chunk_id)
 
 

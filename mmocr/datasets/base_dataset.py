@@ -99,7 +99,10 @@ class BaseDataset(Dataset):
         img_info = self.data_infos[index]
         results = dict(img_info=img_info)
         self.pre_pipeline(results)
-        return self.pipeline(results)
+        # print('results================')
+        # print(results)
+        ret = self.pipeline(results)
+        return ret
 
     def prepare_test_img(self, img_info):
         """Get testing data from pipeline.

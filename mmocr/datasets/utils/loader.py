@@ -1,7 +1,7 @@
 import os.path as osp
 
 from mmocr.datasets.builder import LOADERS, build_parser
-from mmocr.utils import list_from_file, list_from_folder_table
+from mmocr.utils import list_from_file, list_from_folder_table, list_from_folder_table_json
 
 import pickle
 
@@ -74,6 +74,17 @@ class TableHardDiskLoader(Loader):
 
     def _load(self, ann_files_folder):
         return list_from_folder_table(ann_files_folder, self.max_seq_len)
+    
+@LOADERS.register_module()
+class JsonLoader(Loader):
+    """Load table structure recognition annotation file from hard disk to RAM.
+
+    Args:
+        ann_files_folder (str): Annotation file folder.
+    """
+
+    def _load(self, ann_files_folder):
+        return list_from_folder_table_json(ann_files_folder, self.max_seq_len)
 
 
 @LOADERS.register_module()

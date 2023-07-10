@@ -54,10 +54,10 @@ def count_matches(pred_texts, gt_texts):
         pred_text_lower = pred_text.lower()
         if gt_text_lower == pred_text_lower:
             match_res['match_word_ignore_case'] += 1
-        else:
-            print('*'*60)
-            print('Pred : {}'.format(pred_text_lower))
-            print('GtGt : {}'.format(gt_text_lower))
+        # else:
+        #     print('*'*60)
+        #     print('Pred : {}'.format(pred_text_lower))
+        #     print('GtGt : {}'.format(gt_text_lower))
         gt_text_lower_ignore = comp.sub('', gt_text_lower)
         pred_text_lower_ignore = comp.sub('', pred_text_lower)
         if gt_text_lower_ignore == pred_text_lower_ignore:

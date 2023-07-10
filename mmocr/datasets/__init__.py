@@ -4,7 +4,7 @@ from .base_dataset import BaseDataset
 from .icdar_dataset import IcdarDataset
 from .kie_dataset import KIEDataset
 from .ner_dataset import NerDataset
-from .ocr_dataset import OCRDataset
+from .ocr_dataset import OCRDataset, TEDSDataset
 from .ocr_seg_dataset import OCRSegDataset
 from .pipelines import CustomFormatBundle, DBNetTargets, FCENetTargets
 from .text_det_dataset import TextDetDataset
@@ -15,7 +15,7 @@ __all__ = [
     'DATASETS', 'IcdarDataset', 'build_dataloader', 'build_dataset',
     'BaseDataset', 'OCRDataset', 'TextDetDataset', 'CustomFormatBundle',
     'DBNetTargets', 'OCRSegDataset', 'KIEDataset', 'FCENetTargets',
-    'NerDataset'
+    'NerDataset', 'TEDSDataset'
 ]
 
 __all__ += utils.__all__

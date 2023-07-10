@@ -229,6 +229,12 @@ class TableStrParser:
         line_info['bbox'] = bboxes
         line_info['bbox_masks'] = bbox_masks
 
+        # print('==================================')
+
+        line_info['line'] = line_dict.get('line', '')
+        line_info['label_relations'] = line_dict.get('label_relations', '')
+        line_info['label_htmls'] = line_dict.get('label_htmls', '')
+
         return line_info
 
 
