@@ -501,11 +501,14 @@ if __name__ == '__main__':
         # ↓ ---- new TEDsmetric 07/08 | train/test on 480 | 10fold1--- ↓ # valid92.90 test 92.203 >> 1st. 92.233
         # 'structure_master_ckpt': './checkpoints/epoch_30_val92.90_10fold1.pth',
         # ↓ ---- new TEDsmetric 07/09 | train/test on 480 | 10fold2--- ↓ # valid92.87 test ? >> 1st. ?
-        'structure_master_ckpt': './checkpoints/epoch_22_val93.64_10fold0.pth',
-        'structure_master_config': './configs/textrecog/master/table_master_ResnetExtract_Ranger_0705.py',
-        'structure_master_result_folder': './output/structure_result/test_A_jpg480max',
+        # 'structure_master_ckpt': './checkpoints/epoch_22_val93.64_10fold0.pth',
+        #
+        # 'structure_master_ckpt': './checkpoints/wire_10fold2_epoch_30_val95.98.pth',
+        'structure_master_ckpt': './checkpoints/wireless_10fold2_epoch_30_val91.21.pth',
+        'structure_master_config': './configs/textrecog/master/table_master_ResnetExtract_Ranger_0705_wireless.py',
+        'structure_master_result_folder': './output/structure_result/test_A_jpg480max_wireless',
 
-        'test_folder': '/media/ubuntu/Date12/TableStruct/new_data/test_A_jpg480max',
+        'test_folder': '/media/ubuntu/Date12/TableStruct/new_data/test_A_jpg480max_wireless',
         'chunks_nums': chunk_nums
     }
 

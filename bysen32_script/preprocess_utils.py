@@ -18,12 +18,13 @@ class PubtabnetParser(object):
     def __init__(self, is_toy=True, split='valid', foldk="10fold0", chunks_nums=16):
         self.split = split
         # self.data_root = '/userhome/dataset/TSR/Fly_TSR/'
-        dataset = "train_jpg480max"
+        dataset = "train_jpg480max_wireless"
         self.data_root = '/media/ubuntu/Date12/TableStruct/new_data'
         self.labels_path = os.path.join(self.data_root, f'{dataset}_gt_json')
         self.split_file  = os.path.join(self.data_root, f'{dataset}_{foldk}.json')
         self.raw_img_root = os.path.join(self.data_root, dataset)
         # self.gt_table_path = os.path.join(self.data_root, 'train_jpg_gt_json')
+        # 这个保存的位置有问题 save_root
         self.save_root = os.path.join(self.data_root, 'tablemaster', f'{foldk}', 'cell_box_label')
         self.structure_txt_folder = self.save_root + '/StructureLabelAddEmptyBbox_{}/'.format(split)
         self.is_toy = is_toy
