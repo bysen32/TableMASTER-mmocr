@@ -61,10 +61,10 @@ class TableResize:
 
     def _get_resize_scale(self, w, h):
         if self.keep_ratio:
-            if self.img_scale is None and isinstance(self.ratio_range, list):
+            if self.img_scale is None and isinstance(self.ratio_range, list): # 随机缩放
                 choice_ratio = random.uniform(self.ratio_range[0], self.ratio_range[1])
                 return (int(w * choice_ratio), int(h * choice_ratio))
-            elif isinstance(self.img_scale, tuple) and -1 in self.img_scale:
+            elif isinstance(self.img_scale, tuple) and -1 in self.img_scale: # 设定宽或高，另一边自适应
                 if self.img_scale[0] == -1:
                     resize_w = w / h * self.img_scale[1]
                     return (int(resize_w), self.img_scale[1])
@@ -74,7 +74,7 @@ class TableResize:
             else:
                 return (int(w), int(h))
         else:
-            if isinstance(self.img_scale, tuple):
+            if isinstance(self.img_scale, tuple): # 设定宽和高
                 return self.img_scale
             else:
                 raise NotImplementedError
@@ -118,7 +118,11 @@ class TableResize:
                 w = self.long_size
 
         img_scale = self._get_resize_scale(w, h)
-        resize_img = cv2.resize(img, img_scale, interpolation=self.interpolation)
+        if img_scale[0] >= img.shape[1]: # 放大
+            resize_img = cv2.resize(img, img_scale, interpolation=cv2.INTER_CUBIC)
+        else: # 缩小
+            resize_img = cv2.resize(img, img_scale, interpolation=cv2.INTER_LINEAR)
+
         scale_factor = (resize_img.shape[0] / img.shape[0], resize_img.shape[1] / img.shape[1])
 
         results['img'] = resize_img
@@ -148,7 +152,6 @@ class TableAspect:
                  ):
         self.p = p
         self.ratio = ratio
-        self.interpolation = cv2.INTER_LINEAR
 
     def _get_resize_scale(self, w, h):
 
@@ -181,7 +184,10 @@ class TableAspect:
         h, w, _ = img.shape
 
         img_scale = self._get_resize_scale(w, h)
-        resize_img = cv2.resize(img, img_scale, interpolation=self.interpolation)
+        if img_scale[0] >= img.shape[1]: # 放大
+            resize_img = cv2.resize(img, img_scale, interpolation=cv2.INTER_CUBIC)
+        else: # 缩小
+            resize_img = cv2.resize(img, img_scale, interpolation=cv2.INTER_LINEAR)
         scale_factor = (resize_img.shape[0] / img.shape[0], resize_img.shape[1] / img.shape[1])
 
         results['img'] = resize_img
@@ -387,7 +393,4 @@ class TableBboxEncode:
         results['bbox'] = bboxes
         results['bbox_masks'] = bboxes_masks
         return results
-
-
-
 

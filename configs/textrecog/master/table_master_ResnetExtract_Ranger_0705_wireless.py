@@ -3,7 +3,7 @@ _base_ = [
 ]
 
 
-alphabet_file = './tools/data/alphabet/structure_alphabet.txt'
+alphabet_file = './tools/data/alphabet/structure_alphabet_handmade.txt'
 alphabet_len = len(open(alphabet_file, 'r').readlines())
 max_seq_len = 500
 
@@ -63,10 +63,65 @@ model = dict(
     max_seq_len=max_seq_len)
 
 
+albu_train_transforms = [
+    dict(type='JpegCompression', p=0.05),
+
+    dict(type='RandomShadow', p=0.05),
+
+    dict(type='OneOf',
+         transforms=[
+            dict(type='RandomBrightnessContrast', p=1.0),
+            dict(type='HueSaturationValue', p=1.0),
+            dict(type='ColorJitter', p=1.0),
+            dict(type="CLAHE", p=1.0),
+            dict(type='FancyPCA', p=1.0),
+         ],
+         p=0.05),
+    
+    dict(type='OneOf',
+         transforms=[
+            dict(type='RGBShift', p=1.0),
+            dict(type='ToGray', p=1.0),
+            dict(type='RandomGamma', p=1.0),
+            dict(type='RandomToneCurve', p=1.0),
+         ],
+         p=0.05),
+
+    dict(type='OneOf',
+        transforms=[
+            dict(type='ChannelShuffle', p=1.0),
+            dict(type='ChannelDropout', p=1.0),
+        ],
+        p=0.05),
+
+    dict(type='OneOf',
+        transforms=[
+            dict(type='AdvancedBlur', p=1.0),
+            dict(type='GaussianBlur', p=1.0),
+            dict(type='Sharpen', p=1.0),
+        ],
+        p=0.05),
+    
+    dict(
+        type='OneOf',
+        transforms=[
+            dict(type='GaussNoise', p=1.0),
+            dict(type='ISONoise', p=1.0),
+        ],
+        p=0.05),
+
+    dict(type='PixelDropout', p=0.05)
+]
+
 TRAIN_STATE = True
 img_norm_cfg = dict(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
 train_pipeline = [
     dict(type='LoadImageFromFile'),
+    dict(
+        type='TableAspect',
+        ratio=(0.8, 1.25),
+        p=0.5,
+    ),
     dict(
         type='TableResize',
         keep_ratio=True,
@@ -78,6 +133,9 @@ train_pipeline = [
         return_mask=True,
         mask_ratio=(8, 8),
         train_state=TRAIN_STATE),
+    # dict( # 暂不使用这种增强 bysen32-todo
+    #     type="Albu",
+    #     transforms=albu_train_transforms,),
     dict(type='TableBboxEncode'),
     dict(type='ToTensorOCR'),
     dict(type='NormalizeOCR', **img_norm_cfg),
@@ -237,7 +295,8 @@ log_config = dict(
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
 load_from = None
-load_from = './checkpoints/pubtabnet_epoch_16_0.7767.pth'
+# load_from = './checkpoints/pubtabnet_epoch_16_0.7767.pth'
+load_from = './checkpoints/wireless_10fold2_best.pth'
 resume_from = None
 # resume_from = './checkpoints/epoch_30_val93.03.pth'
 workflow = [('train', 1)]

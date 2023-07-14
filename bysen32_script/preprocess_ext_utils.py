@@ -18,9 +18,9 @@ class PubtabnetParser(object):
     def __init__(self, is_toy=True, split='valid', foldk="10fold0", chunks_nums=16):
         self.split = split
         # self.data_root = '/userhome/dataset/TSR/Fly_TSR/'
-        dataset = "train_jpg480max_wire"
-        self.data_root = '/media/ubuntu/Date12/TableStruct/new_data'
-        self.labels_path = os.path.join(self.data_root, f'{dataset}_gt_json')
+        dataset = "train_wire"
+        self.data_root = '/media/ubuntu/Date12/TableStruct/ext_data'
+        self.labels_path = os.path.join(self.data_root, f'{dataset}')
         self.split_file  = os.path.join(self.data_root, f'{dataset}_{foldk}.json')
         self.raw_img_root = os.path.join(self.data_root, dataset)
         # self.gt_table_path = os.path.join(self.data_root, 'train_jpg_gt_json')
@@ -177,7 +177,7 @@ class PubtabnetParser(object):
                 token_list = html['html']['structure']['tokens']
                 merged_token = self.merge_token(token_list)
                 # encoded_token = self.insert_empty_bbox_token(merged_token, cells)
-                encoded_token = merged_token
+                encoded_token = merged_token # 不用上面的函数，因为不需要加空bbox
                 for et in encoded_token:
                     if et not in alphabet:
                         alphabet.append(et)
@@ -185,7 +185,7 @@ class PubtabnetParser(object):
         print("get structure alphabet cost time {} s.".format(time.time()-start_time))
 
     def base_name2html(self, base_name):
-        table = json.load(open(os.path.join(self.labels_path, base_name + '-gt.json'), 'r'))
+        table = json.load(open(os.path.join(self.labels_path, base_name + '.json'), 'r'))
         table['layout'] = np.array(table['layout'])
         html = table_to_html(table)
 
@@ -251,7 +251,6 @@ class PubtabnetParser(object):
             # structure_fid.write(image_path + '\n')
             json_info['file_path'] = image_path
 
-            # table = json.load(open(os.path.join(self.gt_table_path, base_name + '-gt.json'), 'r'))
             html, table = self.base_name2html(base_name)
             # record structure token
             cells = table['cells']
@@ -259,7 +258,7 @@ class PubtabnetParser(object):
             token_list = html['html']['structure']['tokens']
             merged_token = self.merge_token(token_list)
             # encoded_token = self.insert_empty_bbox_token(merged_token, cells)
-            encoded_token = merged_token # 不用上面的插入<eb>
+            encoded_token = merged_token # 不用上面的函数，因为不需要加空bbox
             encoded_token_str = ','.join(encoded_token)
             # structure_fid.write(encoded_token_str + '\n')
             json_info['label'] = encoded_token_str
@@ -276,11 +275,11 @@ class PubtabnetParser(object):
 
             json_info['bbox'] = bboxes
 
-            info_file = os.path.join(self.raw_img_root, base_name + '.json')
-            info = json.load(open(info_file, 'r'))
-            json_info['line'] = info['line']
+            # info_file = os.path.join(self.raw_img_root, base_name + '.json')
+            # info = json.load(open(info_file, 'r'))
+            json_info['line'] = bboxes
 
-            label_path = os.path.join(self.labels_path, base_name + '-gt.json')
+            label_path = os.path.join(self.labels_path, base_name + '.json')
             label = json.load(open(label_path, 'r'))
 
             # 0706 不分有线无线

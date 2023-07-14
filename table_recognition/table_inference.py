@@ -482,6 +482,10 @@ if __name__ == '__main__':
     # Runner
     chunk_nums = int(sys.argv[1])
     chunk_id = int(sys.argv[2])
+    A = sys.argv[3]
+    B = sys.argv[4]
+    C = sys.argv[5]
+    D = sys.argv[6]
 
     cfg = {
         'pse_config': './configs/textdet/psenet/psenet_r50_fpnf_600e_pubtabnet.py',
@@ -504,11 +508,12 @@ if __name__ == '__main__':
         # 'structure_master_ckpt': './checkpoints/epoch_22_val93.64_10fold0.pth',
         #
         # 'structure_master_ckpt': './checkpoints/wire_10fold2_epoch_30_val95.98.pth',
-        'structure_master_ckpt': './checkpoints/wireless_10fold2_epoch_30_val91.21.pth',
-        'structure_master_config': './configs/textrecog/master/table_master_ResnetExtract_Ranger_0705_wireless.py',
-        'structure_master_result_folder': './output/structure_result/test_A_jpg480max_wireless',
 
-        'test_folder': '/media/ubuntu/Date12/TableStruct/new_data/test_A_jpg480max_wireless',
+        'structure_master_ckpt': A,
+        'structure_master_config': B,
+        'test_folder': C,
+        'structure_master_result_folder': D,
+
         'chunks_nums': chunk_nums
     }
 

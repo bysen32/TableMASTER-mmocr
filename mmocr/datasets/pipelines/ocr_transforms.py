@@ -135,8 +135,7 @@ class ToTensorOCR:
         pass
 
     def __call__(self, results):
-        results['img'] = TF.to_tensor(results['img'].copy())
-
+        results['img'] = TF.to_tensor(results['img'].copy()) # (0,255) -> (0.0,1.0)
         return results
 
 
