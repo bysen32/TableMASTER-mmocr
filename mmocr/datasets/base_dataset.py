@@ -121,7 +121,7 @@ class BaseDataset(Dataset):
         try:
             data_info = self.data_infos[index]
             img_prefix = self.img_prefix
-            print_log(f'Warning: skip broken file {data_info} '
+            print_log(f'Warning: skip broken file {data_info["filename"]} '
                       f'with img_prefix {img_prefix}')
         except Exception as e:
             print_log(f'load index {index} with error {e}')

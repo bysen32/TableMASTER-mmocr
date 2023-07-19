@@ -202,6 +202,50 @@ class TableAspect:
         return results
 
 
+
+
+@PIPELINES.register_module()
+class TableRotate:
+    def __init__(self, rotate_ratio=(-1, 1), p=0.5):
+        self.rotate_ratio = rotate_ratio
+        self.p = p
+    
+    def _rotate_img(self, results):
+        img = results['img']
+        h, w = img.shape[:2]
+        center = (w//2, h//2)
+        ratio = random.uniform(self.rotate_ratio[0], self.rotate_ratio[1])
+        M = cv2.getRotationMatrix2D(center, ratio, 1.0)
+        rotate_img = cv2.warpAffine(img, M, (w, h), flags=cv2.INTER_CUBIC,\
+            borderMode=cv2.BORDER_REPLICATE)
+        results['img'] = rotate_img
+        results['img_shape'] = rotate_img.shape
+        results['pad_shape'] = rotate_img.shape
+        results['rotate_ratio'] = ratio
+        results['rotate_matrix'] = M
+
+    def _rotate_bboxes(self, results):
+        if 'img_info' in results.keys():
+            if results['img_info'].get('bbox', None) is not None:
+                bboxes = results['img_info']['bbox']
+                M = results['rotate_matrix']
+                for idx, bbox in enumerate(bboxes):
+                    x0, y0, x1, y1 = bbox
+                    [x0, y0], [x1, y1] = cv2.transform(np.array([[[x0, y0], [x1, y1]]]), M).squeeze().astype(np.int32)
+                    bboxes[idx] = [x0, y0, x1, y1]
+                results['img_info']['bbox'] = bboxes
+            else:
+                raise ValueError('results should have bbox keys.')
+        else:
+            pass
+
+    def __call__(self, results):
+        self._rotate_img(results)
+        self._rotate_bboxes(results)
+        return results
+
+
+
 @PIPELINES.register_module()
 class TablePad:
     """Pad the image & mask.

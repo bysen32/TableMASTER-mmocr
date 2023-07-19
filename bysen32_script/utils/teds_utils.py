@@ -42,7 +42,7 @@ def format_tokens(master_token):
 
     return master_token_list
 
-def get_html(tokens_list, bboxs):
+def get_html(tokens_list, bboxs, bbox_format='xywh'):
     new_tokens_list = []
     cells = []
 
@@ -50,8 +50,15 @@ def get_html(tokens_list, bboxs):
     for token in tokens_list:
         if token == '<td></td>' or token == '<td':
             bbox = bboxs[count]
-            x, y, w, h = bbox[0], bbox[1], bbox[2], bbox[3]
-            bbox_new = [x-w/2, y-h/2, x+w/2, y+h/2]
+            if bbox_format == 'xywh':
+                x, y, w, h = bbox[0], bbox[1], bbox[2], bbox[3]
+                bbox_new = [x-w/2, y-h/2, x+w/2, y+h/2]
+            elif bbox_format == 'xyxy':
+                x0, y0, x1, y1 = bbox[0], bbox[1], bbox[2], bbox[3]
+                bbox_new = [int(x0), int(y0), int(x1), int(y1)] # int64 error
+            else:
+                raise NotImplementedError
+
             count += 1
             if token == '<td></td>':
                 new_tokens_list.extend(['<td>', '</td>'])

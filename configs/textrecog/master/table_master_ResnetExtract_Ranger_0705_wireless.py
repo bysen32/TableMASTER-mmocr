@@ -90,7 +90,6 @@ albu_train_transforms = [
     dict(type='OneOf',
         transforms=[
             dict(type='ChannelShuffle', p=1.0),
-            dict(type='ChannelDropout', p=1.0),
         ],
         p=0.05),
 
@@ -123,6 +122,10 @@ train_pipeline = [
         p=0.5,
     ),
     dict(
+        type='TableRotate',
+        p=0.5,
+    ),
+    dict(
         type='TableResize',
         keep_ratio=True,
         long_size=480),
@@ -133,9 +136,9 @@ train_pipeline = [
         return_mask=True,
         mask_ratio=(8, 8),
         train_state=TRAIN_STATE),
-    # dict( # 暂不使用这种增强 bysen32-todo
-    #     type="Albu",
-    #     transforms=albu_train_transforms,),
+    dict(
+        type="Albu",
+        transforms=albu_train_transforms,),
     dict(type='TableBboxEncode'),
     dict(type='ToTensorOCR'),
     dict(type='NormalizeOCR', **img_norm_cfg),

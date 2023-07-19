@@ -52,30 +52,20 @@ def fuse_gt_info(label, table):
 
 def table2layout(table):
     table = parse_relation_from_table(table)
-    span_indice, row_span_indice, col_span_indice = get_span_cells(table['row_adj'], table['col_adj'])
-    shared_row_lines = get_shared_line(table['row_adj'], table['cell_adj'], table, row_span_indice)
-    shared_col_lines = get_shared_line(table['col_adj'], table['cell_adj'], table, col_span_indice)
-    shared_row_line_ids = get_shared_line_id(table['row_adj'], table['cell_adj'], row_span_indice)
-    shared_col_line_ids = get_shared_line_id(table['col_adj'], table['cell_adj'], col_span_indice)
+    span_indice, row_span_indice, col_span_indice = get_span_cells(table['row_adj'], table['col_adj']) # 计算跨行/列的line idx
+    shared_row_lines = get_shared_line(table['row_adj'], table['cell_adj'], table, row_span_indice) #非跨行的line的坐标
+    shared_col_lines = get_shared_line(table['col_adj'], table['cell_adj'], table, col_span_indice) #非跨列的line的坐标
+    shared_row_line_ids = get_shared_line_id(table['row_adj'], table['cell_adj'], row_span_indice) #非跨行的line的idx
+    shared_col_line_ids = get_shared_line_id(table['col_adj'], table['cell_adj'], col_span_indice) #非跨列的line的idx
 
     shared_row_line_ids, shared_row_lines, shared_col_line_ids, shared_col_lines = \
             sort_shared_line(shared_row_line_ids, shared_row_lines, shared_col_line_ids, shared_col_lines)
-    gt_label = parse_gt_label(table['cell_adj'], table['row_adj'], table['col_adj'], shared_row_line_ids, shared_col_line_ids)
+    gt_label = parse_gt_label(table['cell_adj'], table['row_adj'], table['col_adj'], shared_row_line_ids, shared_col_line_ids, table['line_valid'])
     return gt_label
 
 
 def table2label(table):
-    table = parse_relation_from_table(table)
-    span_indice, row_span_indice, col_span_indice = get_span_cells(table['row_adj'], table['col_adj'])
-    shared_row_lines = get_shared_line(table['row_adj'], table['cell_adj'], table, row_span_indice)
-    shared_col_lines = get_shared_line(table['col_adj'], table['cell_adj'], table, col_span_indice)
-    shared_row_line_ids = get_shared_line_id(table['row_adj'], table['cell_adj'], row_span_indice)
-    shared_col_line_ids = get_shared_line_id(table['col_adj'], table['cell_adj'], col_span_indice)
-
-    shared_row_line_ids, shared_row_lines, shared_col_line_ids, shared_col_lines = \
-            sort_shared_line(shared_row_line_ids, shared_row_lines, shared_col_line_ids, shared_col_lines)
-    gt_label = parse_gt_label(table['cell_adj'], table['row_adj'], table['col_adj'], shared_row_line_ids, shared_col_line_ids)
-
+    gt_label = table2layout(table)
     gt_label = fuse_gt_info(gt_label, table)
     return gt_label
 

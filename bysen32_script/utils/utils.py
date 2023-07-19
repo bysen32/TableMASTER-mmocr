@@ -4,7 +4,7 @@ import copy
 
 
 # parse relation adjacency matrix
-def parse_relation_from_table(table, iou_threshold=0.5):
+def parse_relation_from_table(table, iou_threshold=0.8): # 使用高IOU阈值
     if table['is_wireless']:
         line_polys = table['line']
     else:
@@ -15,6 +15,7 @@ def parse_relation_from_table(table, iou_threshold=0.5):
     # parse row relation adjacency matrix
     row_adj = np.identity(len(line_polys), dtype=np.int64)
     row_polys = table['row']
+    line_has_row = np.zeros(len(line_polys), dtype=np.int64)
     for row_poly in row_polys: # 行多边形
         same_row_idxs = []
         row_polygon = Polygon.Polygon(row_poly)
@@ -23,6 +24,7 @@ def parse_relation_from_table(table, iou_threshold=0.5):
             iou = (row_polygon & line_polygon).area() / min(row_polygon.area(), line_polygon.area())
             if iou >= iou_threshold:
                 same_row_idxs.append(idx)
+                line_has_row[idx] = 1
         # map to row relation adjacency matrix
         for i in same_row_idxs: # 同行的cell或line
             for j in same_row_idxs:
@@ -32,6 +34,7 @@ def parse_relation_from_table(table, iou_threshold=0.5):
     # parse col relation adjacency matrix
     col_adj = np.identity(len(line_polys), dtype=np.int64)
     col_polys = table['col']
+    line_has_col = np.zeros(len(line_polys), dtype=np.int64)
     for col_poly in col_polys:
         same_col_idxs = []
         col_polygon = Polygon.Polygon(col_poly)
@@ -40,6 +43,7 @@ def parse_relation_from_table(table, iou_threshold=0.5):
             iou = (col_polygon & line_polygon).area() / min(col_polygon.area(), line_polygon.area())
             if iou >= iou_threshold:
                 same_col_idxs.append(idx)
+                line_has_col[idx] = 1
         # map to col relation adjacency matrix
         for i in same_col_idxs:
             for j in same_col_idxs:
@@ -47,8 +51,27 @@ def parse_relation_from_table(table, iou_threshold=0.5):
     table['col_adj'] = col_adj
 
     # parse cell relation adjacency matrix
-    cell_adj= np.array((row_adj + col_adj)==2, dtype=np.int64)
+    cell_adj = np.array((row_adj + col_adj)==2, dtype=np.int64)
+    line_valid = np.array((line_has_row + line_has_col)==2, dtype=np.int64) # 行列都被分配的 line 才合法
+    table['line_valid'] = line_valid
     table['cell_adj'] = cell_adj
+
+    # 使用最大团算法 防止cell计算错误
+    #cell_adj_new = np.zeros_like(cell_adj)
+    #import networkx as nx
+    #G = nx.Graph()
+    #G.add_edges_from(np.argwhere(cell_adj==1))
+    #cliques = list(nx.find_cliques(G))
+    #cliques = sorted(cliques, key=lambda x: len(x), reverse=True)
+    #idx_flag = np.zeros(len(cell_adj), dtype=np.int32)
+    #for idxs in cliques:
+    #    for idxi in idxs:
+    #        for idxj in idxs:
+    #            if idx_flag[idxi] == 0 and idx_flag[idxj] == 0:
+    #                cell_adj_new[idxi, idxj] = 1
+    #    for idx in idxs: # 统一标记
+    #        idx_flag[idx] = 1
+    #table['cell_adj'] = cell_adj_new
 
     return table
 
@@ -59,7 +82,7 @@ def get_span_cells(row_adj, col_adj):
     for row_idx, row in enumerate(row_adj):
         idx_r = list(np.where(row == 1)[0])
         if len(idx_r) > 2:
-            idx_r.remove(row_idx)
+            idx_r.remove(row_idx) # 移除自身
             for idx1 in idx_r: # justify this cell is spanning cell or not
                 for idx2 in idx_r:
                     if row_adj[idx1, idx2] != 1:
@@ -71,7 +94,7 @@ def get_span_cells(row_adj, col_adj):
         if len(idx_c) > 2:
             idx_c.remove(col_idx)
             for idx1 in idx_c: # justify this cell is spanning cell or not
-                for idx2 in idx_c:
+                for idx2 in idx_c: # 与自身同列的cell/line 分属于不同的列 说明是自身跨列
                     if col_adj[idx1, idx2] != 1:
                         col_span_indice.append(col_idx)
     span_text_indice = list(set(row_span_indice + col_span_indice))
@@ -118,22 +141,23 @@ def get_shared_line(adj_mat, adj_cell, table, span_index):
 def get_shared_line_id(adj_mat, adj_cell, span_index):   
     neglect = []
     text_share_all = []
-    for ridx, adj in enumerate(adj_mat):
-        if ridx in span_index:
+    for ridx, adj in enumerate(adj_mat): # 列邻居矩阵，逐line枚举
+        if ridx in span_index: # 排除span列的 line
             continue
         if ridx not in neglect:
-            text_idx = adj.nonzero()[0]
+            text_idx = adj.nonzero()[0] # 获得所有同列的line
             # remove span index
-            text_idx = [idx for idx in text_idx if idx not in span_index]
+            text_idx = [idx for idx in text_idx if idx not in span_index] # 从中剔除span的line
             text_share = []
             neglect.extend(text_idx)
             neglect_share_cell = []
-            for tidx in text_idx:
+            for tidx in text_idx: # 枚举同列的单列line
                 if tidx not in neglect_share_cell:
-                    text_idx_c = adj_cell[tidx].nonzero()[0]
+                    text_idx_c = adj_cell[tidx].nonzero()[0] # 它们各自同单元格的lines
                     neglect_share_cell.extend(text_idx_c)
                     for idx_ in text_idx_c:
-                        text_share.append(idx_)
+                        if idx_ not in span_index:
+                            text_share.append(idx_)
             text_share_all.append(text_share)
 
     return text_share_all
@@ -177,7 +201,7 @@ def format_layout(layout):
     return new_layout
 
 
-def parse_gt_label(cell_adj, row_adj, col_adj, shared_row_line_ids, shared_col_line_ids):
+def parse_gt_label(cell_adj, row_adj, col_adj, shared_row_line_ids, shared_col_line_ids, line_valid):
     num_row = len(shared_row_line_ids)
     num_col = len(shared_col_line_ids)
     if num_row == 0 or num_col == 0:
@@ -196,36 +220,38 @@ def parse_gt_label(cell_adj, row_adj, col_adj, shared_row_line_ids, shared_col_l
     layout = np.arange(int(num_row*num_col)).reshape(num_row, num_col)
     start_id = int(num_row*num_col)
 
-    neglect = [] # passed assigned cell ids
+    neglect = [] # passed assigned cell ids 已分配的cell/line
     assign_text_id = dict() # save assigned cell ids
     for index, adj in enumerate(cell_adj):
         if index in neglect: # justify assign or not
             continue
-        cell_ids = adj.nonzero()[0]
-        neglect.extend(cell_ids)
+        if line_valid[index] == 0:
+            continue
+        cell_ids = adj.nonzero()[0] # 同cell的line id
+        neglect.extend(cell_ids) # 同单元的所有line idx标记
 
         span_row_ids = []
         span_col_ids = []
 
         # find all span row line ids
         span_row_line_ids = []
-        for ids in cell_ids:
+        for ids in cell_ids: # 通过同cell的line ids找到与它们同row的line ids
             span_row_line_ids.extend(row_adj[ids].nonzero()[0])
         span_row_line_ids = list(set(span_row_line_ids))
-        for row_id, text_ids in enumerate(shared_row_line_ids):
+        for row_id, text_ids in enumerate(shared_row_line_ids): # 逐行枚举 line ids
             for idx in text_ids:
-                if idx in span_row_line_ids:
+                if idx in span_row_line_ids and line_valid[idx] == 1:
                     span_row_ids.append(row_id)
                     break
         
         # find all span col line ids
         span_col_line_ids = []
         for ids in cell_ids:
-            span_col_line_ids.extend(col_adj[ids].nonzero()[0])
+            span_col_line_ids.extend(col_adj[ids].nonzero()[0]) # 与当前cell同列的line ids
         span_col_line_ids = list(set(span_col_line_ids))
-        for col_id, text_ids in enumerate(shared_col_line_ids):
+        for col_id, text_ids in enumerate(shared_col_line_ids): # 枚举不跨列的line ids
             for idx in text_ids:
-                if idx in span_col_line_ids:
+                if idx in span_col_line_ids and line_valid[idx] == 1:
                     span_col_ids.append(col_id)
                     break
         
