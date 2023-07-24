@@ -234,6 +234,7 @@ def format_table(table):
         num_cells = max(len(cells), layout.max() + 1)
     except:
         num_cells = len(cells)
+
     for cell_id in range(num_cells):
         ys, xs = np.split(np.argwhere(layout==cell_id), 2, 1)
         start_row = ys.min()

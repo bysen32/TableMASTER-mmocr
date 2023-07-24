@@ -34,7 +34,7 @@ def html_to_table(html):
     layout = [[]]
 
     def extend_table(x, y):
-        assert (x >= 0) and (y >= 0)
+        # assert (x >= 0) and (y >= 0)
         nonlocal layout
 
         if x >= len(layout[0]):
@@ -46,13 +46,13 @@ def html_to_table(html):
                 layout.append([-1] * len(layout[0]))
 
     def set_cell_val(x, y, val):
-        assert (x >= 0) and (y >= 0)
+        # assert (x >= 0) and (y >= 0)
         nonlocal layout
         extend_table(x, y)
         layout[y][x] = val
 
     def get_cell_val(x, y):
-        assert (x >= 0) and (y >= 0)
+        # assert (x >= 0) and (y >= 0)
         nonlocal layout
         extend_table(x, y)
         return layout[y][x]
@@ -113,9 +113,9 @@ def html_to_table(html):
 
     check_continuous(head_rows)
     check_continuous(body_rows)
-    assert len(set(head_rows) | set(body_rows)) == len(layout)
+    # assert len(set(head_rows) | set(body_rows)) == len(layout)
     layout = np.array(layout)
-    assert np.all(layout >= 0)
+    # assert np.all(layout >= 0)
 
     cells_info = list()
     for cell_idx, cell in enumerate(html['html']['cells']):

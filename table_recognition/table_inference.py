@@ -362,6 +362,7 @@ class Runner:
                 pickle.dump(end2end_results, f)
 
 
+    # 进行结构化预测的函数
     def do_structure_predict(self, path, is_save=True, gpu_idx=None):
         if isinstance(path, str):
             if os.path.isfile(path):
@@ -382,7 +383,7 @@ class Runner:
             else:
                 raise ValueError
 
-        elif isinstance(path, list):
+        elif isinstance(path, list): # 预测一批文件
             all_results = dict()
             print('Chunks files in structure master prediction ...')
             for i, p in enumerate(path):

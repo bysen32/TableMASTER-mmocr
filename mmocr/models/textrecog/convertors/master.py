@@ -97,8 +97,7 @@ class MasterConvertor(BaseConvertor):
             src_target[-1] = self.end_idx
             src_target[0] = self.start_idx
             src_target[1:-1] = tensor
-            padded_target = (torch.ones(self.max_seq_len) *
-                             self.padding_idx).long()
+            padded_target = (torch.ones(self.max_seq_len) * self.padding_idx).long()
             char_num = src_target.size(0)
             if char_num > self.max_seq_len:
                 # TODO:大于max_seq_len-2的，应该跳过？检查dataset有没处理。

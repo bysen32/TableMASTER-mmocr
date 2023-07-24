@@ -4,7 +4,7 @@ import copy
 
 
 # parse relation adjacency matrix
-def parse_relation_from_table(table, iou_threshold=0.8): # 使用高IOU阈值
+def parse_relation_from_table(table, iou_threshold=0.5): # 使用高IOU阈值
     if table['is_wireless']:
         line_polys = table['line']
     else:
@@ -52,26 +52,26 @@ def parse_relation_from_table(table, iou_threshold=0.8): # 使用高IOU阈值
 
     # parse cell relation adjacency matrix
     cell_adj = np.array((row_adj + col_adj)==2, dtype=np.int64)
-    line_valid = np.array((line_has_row + line_has_col)==2, dtype=np.int64) # 行列都被分配的 line 才合法
+    line_valid = np.array((line_has_row + line_has_col)==2, dtype=np.int64).tolist() # 行列都被分配的 line 才合法
     table['line_valid'] = line_valid
     table['cell_adj'] = cell_adj
 
-    # 使用最大团算法 防止cell计算错误
-    #cell_adj_new = np.zeros_like(cell_adj)
-    #import networkx as nx
-    #G = nx.Graph()
-    #G.add_edges_from(np.argwhere(cell_adj==1))
-    #cliques = list(nx.find_cliques(G))
-    #cliques = sorted(cliques, key=lambda x: len(x), reverse=True)
-    #idx_flag = np.zeros(len(cell_adj), dtype=np.int32)
-    #for idxs in cliques:
-    #    for idxi in idxs:
-    #        for idxj in idxs:
-    #            if idx_flag[idxi] == 0 and idx_flag[idxj] == 0:
-    #                cell_adj_new[idxi, idxj] = 1
-    #    for idx in idxs: # 统一标记
-    #        idx_flag[idx] = 1
-    #table['cell_adj'] = cell_adj_new
+    # 使用最大团算法 防止cell计算错误 剔除异常数据
+    cell_adj_new = np.zeros_like(cell_adj)
+    import networkx as nx
+    G = nx.Graph()
+    G.add_edges_from(np.argwhere(cell_adj==1))
+    cliques = list(nx.find_cliques(G))
+    cliques = sorted(cliques, key=lambda x: len(x), reverse=True)
+    idx_flag = np.zeros(len(cell_adj), dtype=np.int32)
+    for idxs in cliques:
+        for idxi in idxs:
+            for idxj in idxs:
+                if idx_flag[idxi] == 0 and idx_flag[idxj] == 0:
+                    cell_adj_new[idxi, idxj] = 1
+        for idx in idxs: # 统一标记
+            idx_flag[idx] = 1
+    table['cell_adj'] = cell_adj_new
 
     return table
 
@@ -103,7 +103,7 @@ def get_span_cells(row_adj, col_adj):
     return span_text_indice, row_span_text_indice, col_span_text_indice
 
 
-def get_shared_line(adj_mat, adj_cell, table, span_index):
+def get_shared_line(adj_mat, adj_cell, table, span_index, line_valid):
     if table['is_wireless']:
         text_box = table['line']
     else:
@@ -114,11 +114,16 @@ def get_shared_line(adj_mat, adj_cell, table, span_index):
     all_index = list(range(len(text_box))) # 枚举所有的cell/line
     for sidx in span_index: # 剔除span的cell/line
         all_index.remove(sidx)
+    for sidx in range(len(line_valid)):
+        if sidx in all_index and line_valid[sidx] == 0:
+            all_index.remove(sidx)
     
     adj_mat_wo_span = adj_mat[all_index][:,all_index] # 提取非span的cell/line 子矩阵
     adj_cell_wo_span = adj_cell[all_index][:,all_index] # 提取非span的cell/line
 
-    text_box_wo_span = [text_box[idx_] for idx_ in range(len(text_box)) if idx_ not in span_index] # 提取非span的cell/line的多边形
+    # text_box_wo_span = [text_box[idx_] for idx_ in range(len(text_box)) if (idx_ not in span_index) and line_valid[idx_]] # 提取非span的cell/line的多边形
+    text_box_wo_span = [text_box[idx_] for idx_ in all_index] # 提取非span的cell/line的多边形
+    # assert len(text_box_wo_span) == len(all_index)
     
     neglect = []
     text_share_all = []
@@ -138,16 +143,18 @@ def get_shared_line(adj_mat, adj_cell, table, span_index):
     return text_share_all
 
 
-def get_shared_line_id(adj_mat, adj_cell, span_index):   
+def get_shared_line_id(adj_mat, adj_cell, span_index, line_valid):   
     neglect = []
     text_share_all = []
     for ridx, adj in enumerate(adj_mat): # 列邻居矩阵，逐line枚举
         if ridx in span_index: # 排除span列的 line
             continue
+        if not line_valid[ridx]:
+            continue
         if ridx not in neglect:
             text_idx = adj.nonzero()[0] # 获得所有同列的line
             # remove span index
-            text_idx = [idx for idx in text_idx if idx not in span_index] # 从中剔除span的line
+            text_idx = [idx for idx in text_idx if (idx not in span_index) and line_valid[idx]==1] # 从中剔除span的line
             text_share = []
             neglect.extend(text_idx)
             neglect_share_cell = []
@@ -156,7 +163,7 @@ def get_shared_line_id(adj_mat, adj_cell, span_index):
                     text_idx_c = adj_cell[tidx].nonzero()[0] # 它们各自同单元格的lines
                     neglect_share_cell.extend(text_idx_c)
                     for idx_ in text_idx_c:
-                        if idx_ not in span_index:
+                        if idx_ not in span_index and line_valid[idx_] == 1:
                             text_share.append(idx_)
             text_share_all.append(text_share)
 
@@ -185,6 +192,74 @@ def sort_shared_line(share_text_id_row, shared_text_row, share_text_id_col, shar
     shared_text_col = [shared_text_col[idx_] for idx_ in col_index]
 
     return share_text_id_row, shared_text_row, share_text_id_col, shared_text_col
+
+
+def format_table(table): 
+    layout = table['layout']
+
+    cells = table['cells']
+    # num_cells = layout.max() + 1
+    try:
+        num_cells = max(len(cells), layout.max() + 1)
+    except:
+        num_cells = len(cells)
+    for cell_id in range(num_cells):
+        ys, xs = np.split(np.argwhere(layout==cell_id), 2, 1)
+        start_row = ys.min()
+        end_row = ys.max()
+        start_col = xs.min()
+        end_col = xs.max()
+        cell = dict(
+            col_start_idx=int(start_col),
+            row_start_idx=int(start_row),
+            col_end_idx=int(end_col),
+            row_end_idx=int(end_row),
+        )
+        cells[cell_id].update(cell)
+        
+    table = dict(
+        layout=layout.tolist(),
+        cells=cells
+    )
+    return table
+
+
+def format_table_1(table): 
+    layout = table['layout']
+    num = layout.max() + 1
+    idx = 0
+    new_cells = []
+    cell_cord = set()
+    for i, row in enumerate(layout):
+        for j, cell_id in enumerate(row):
+            if cell_id == -1:
+                layout[i, j] = num + idx
+                idx += 1
+                empty_cell = dict(
+                    col_start_idx=j,
+                    row_start_idx=i,
+                    col_end_idx=j,
+                    row_end_idx=i,
+                    transcript = '',
+                    bbox = [0, 0, 0, 0],
+                    segmentation = [[[0, 0], [0, 0], [0, 0], [0, 0]]]
+                )
+                new_cells.append(empty_cell)
+            else:
+                if cell_id not in cell_cord:
+                    cell_cord.add(cell_id)
+                    new_cells.append(table['cells'][cell_id])
+
+    new_layout = format_layout(layout)
+    assert len(new_cells) == new_layout.max() + 1
+
+    table = dict(
+        layout=new_layout,
+        cells=new_cells
+    )
+
+    return table
+
 
 
 def format_layout(layout):
@@ -297,7 +372,7 @@ def parse_gt_label(cell_adj, row_adj, col_adj, shared_row_line_ids, shared_col_l
     return table
 
 
-def extend_text_lines(cells, lines):
+def extend_text_lines(cells, lines, line_valid=None):
     def segmentation_to_polygon(segmentation):
         polygon = Polygon.Polygon()
         for contour in segmentation:
@@ -318,6 +393,8 @@ def extend_text_lines(cells, lines):
     for line_idx, line_poly in enumerate(lines_poly):
         if line_poly.area() == 0:
             continue
+        if line_valid and line_valid[line_idx] == 0:
+            continue
         line_area = line_poly.area()
         max_overlap = 0
         max_overlap_idx = None
@@ -328,7 +405,7 @@ def extend_text_lines(cells, lines):
                 max_overlap = overlap
             if overlap > 0.99:
                 break
-        if max_overlap > 0:
+        if max_overlap_idx is not None:
             assign_ids[max_overlap_idx].append(line_idx)
     
     for idx, value in assign_ids.items():
@@ -337,3 +414,97 @@ def extend_text_lines(cells, lines):
         cells[idx]['transcript'] = '-'.join(value)
         
     return cells
+
+
+def format_tokens(master_token):
+    if 'tbody' not in master_token and 'thead' not in master_token:
+        master_token = f'<tbody>,{master_token},</tbody>'
+
+    # creat virtual master token
+    virtual_master_token_list = []
+    # insert virtual master token
+
+    master_token_list = master_token.split(',')
+    if master_token_list[-1] == '</tbody>':
+        # complete predict(no cut by max length)
+        # This situation insert virtual master token will drop TEDs score in val set.
+        # So we will not extend virtual token in this situation.
+
+        # fake extend virtual
+        master_token_list[:-1].extend(virtual_master_token_list)
+
+        # real extend virtual
+        # master_token_list = master_token_list[:-1]
+        # master_token_list.extend(virtual_master_token_list)
+        # master_token_list.append('</tbody>')
+
+    elif master_token_list[-1] == '<td></td>':
+        master_token_list.append('</tr>')
+        master_token_list.extend(virtual_master_token_list)
+        master_token_list.append('</tbody>')
+    else:
+        master_token_list.extend(virtual_master_token_list)
+        master_token_list.append('</tbody>')
+
+    return master_token_list
+
+
+def remove_empty_bboxes(bboxes):
+    """
+    remove [0., 0., 0., 0.] in structure master bboxes.
+    len(bboxes.shape) must be 2.
+    :param bboxes:
+    :return:
+    """
+    new_bboxes = []
+    for bbox in bboxes:
+        if sum(bbox) == 0.:
+            continue
+        new_bboxes.append(bbox)
+    return np.array(new_bboxes)
+
+
+def get_html(tokens_list, bboxs, bbox_format='xywh'):
+    new_tokens_list = []
+    cells = []
+
+    count = 0
+    for idx, token in enumerate(tokens_list):
+        if token == '<td></td>' or token == '<td':
+            bbox = bboxs[count]
+            if bbox_format == 'xywh':
+                x, y, w, h = bbox[0], bbox[1], bbox[2], bbox[3]
+                bbox_new = [x-w/2, y-h/2, x+w/2, y+h/2]
+            elif bbox_format == 'xyxy':
+                x0, y0, x1, y1 = bbox[0], bbox[1], bbox[2], bbox[3]
+                bbox_new = [int(x0), int(y0), int(x1), int(y1)] # int64 error
+            else:
+                raise NotImplementedError
+
+            count += 1
+            if token == '<td></td>':
+                new_tokens_list.extend(['<td>', '</td>'])
+            else:
+                new_tokens_list.append('<td')
+            cell = dict()
+            cell['tokens'] = ''
+            cell['bbox'] = list(bbox_new)
+            cells.append(cell)
+        elif token == '<eb></eb>':
+            new_tokens_list.extend(['<td>', '</td>']) # 这里没得问题，不用修复
+            cell = dict()
+            cell['tokens'] = ''
+            cell['bbox'] = [0, 0, 0, 0]
+            cells.append(cell)
+        else:
+            new_tokens_list.append(token)
+
+    html = dict(
+        html=dict(
+            cells=cells,
+            structure=dict(
+                tokens=new_tokens_list
+            )
+        )
+    )
+    return html

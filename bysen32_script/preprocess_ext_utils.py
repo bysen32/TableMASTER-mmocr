@@ -18,7 +18,7 @@ class PubtabnetParser(object):
     def __init__(self, is_toy=True, split='valid', foldk="10fold0", chunks_nums=16):
         self.split = split
         # self.data_root = '/userhome/dataset/TSR/Fly_TSR/'
-        dataset = "train_wire"
+        dataset = "train"
         self.data_root = '/media/ubuntu/Date12/TableStruct/ext_data'
         self.labels_path = os.path.join(self.data_root, f'{dataset}')
         self.split_file  = os.path.join(self.data_root, f'{dataset}_{foldk}.json')
@@ -131,8 +131,7 @@ class PubtabnetParser(object):
         for token in token_list:
             if token == '<td></td>' or token == '<td':
                 if cells[bbox_idx]['transcript'] == '':
-                    empty_bbox_token = self.empty_bbox_token_dict['']
-                    add_empty_bbox_token_list.append(empty_bbox_token)
+                    add_empty_bbox_token_list.append("<eb></eb>")
                 else:
                     add_empty_bbox_token_list.append(token)
                 bbox_idx += 1
@@ -176,8 +175,8 @@ class PubtabnetParser(object):
                 cells = table['cells']
                 token_list = html['html']['structure']['tokens']
                 merged_token = self.merge_token(token_list)
-                # encoded_token = self.insert_empty_bbox_token(merged_token, cells)
-                encoded_token = merged_token # 不用上面的函数，因为不需要加空bbox
+                encoded_token = self.insert_empty_bbox_token(merged_token, cells)
+                # encoded_token = merged_token
                 for et in encoded_token:
                     if et not in alphabet:
                         alphabet.append(et)
@@ -246,19 +245,22 @@ class PubtabnetParser(object):
             # structure_fid = open(txt_filepath, 'w')
 
             json_info = {}
+            ########## 1. file_path ##########
             # record image path
             image_path = os.path.join(self.raw_img_root, base_name + '.jpg')
             # structure_fid.write(image_path + '\n')
             json_info['file_path'] = image_path
 
+
+            ########## 2. label ##########
             html, table = self.base_name2html(base_name)
             # record structure token
             cells = table['cells']
             cell_nums = len(cells)
             token_list = html['html']['structure']['tokens']
             merged_token = self.merge_token(token_list)
-            # encoded_token = self.insert_empty_bbox_token(merged_token, cells)
-            encoded_token = merged_token # 不用上面的函数，因为不需要加空bbox
+            encoded_token = self.insert_empty_bbox_token(merged_token, cells)
+            # encoded_token = merged_token # 不用上面的函数，因为不需要加空bbox
             encoded_token_str = ','.join(encoded_token)
             # structure_fid.write(encoded_token_str + '\n')
             json_info['label'] = encoded_token_str
@@ -267,36 +269,37 @@ class PubtabnetParser(object):
             cell_count = self.count_merge_token_nums(encoded_token)
             assert cell_nums == cell_count
             
+            ########## 3. bbox ##########
             bboxes = []
             for cell in cells:
                 # bbox_line = ','.join([str(b) for b in cell['bbox']]) + '\n'
                 # structure_fid.write(bbox_line)
                 bboxes.append(cell['bbox'])
-
             json_info['bbox'] = bboxes
 
+            ########## 4. cell coord ##########
             # info_file = os.path.join(self.raw_img_root, base_name + '.json')
             # info = json.load(open(info_file, 'r'))
-            json_info['line'] = bboxes
+            lines = []
+            for bbox in bboxes:
+                x0, y0, x1, y1 = bbox
+                lines.append([[x0, y0], [x0, y1], [x1, y1], [x1, y0]])
+            json_info['line'] = lines
 
+            ########## 5. layout ##########
             label_path = os.path.join(self.labels_path, base_name + '.json')
             label = json.load(open(label_path, 'r'))
+            json_info['layout'] = label['layout']
 
-            # 0706 不分有线无线
-            # if not info['is_wireless']:
-            #     # print(pred_json)
-            #     label = self.gen_gt_cell(label, info)
-            #     label['cells'] = extend_text_lines(label['cells'], info['line'])
-
+            ########## 6. label_relations ##########
             label['layout'] = np.array(label['layout'])
             label_relations = table_to_relations(label)
-
             json_info['label_relations'] = label_relations
 
-            label_htmls = table_to_html(label)
-            label_htmls = format_html(label_htmls)
-
-            json_info['label_htmls'] = label_htmls
+            ########## 7. label_htmls ##########
+            # label_htmls = table_to_html(label)
+            # label_htmls = format_html(label_htmls)
+            # json_info['label_htmls'] = label_htmls
 
             json.dump(json_info, open(json_filepath, 'w'), indent=4)
 

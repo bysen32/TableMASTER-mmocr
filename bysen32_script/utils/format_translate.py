@@ -28,13 +28,14 @@ def table_to_latex(table):
     latex = [cal_cls_id(cell['transcript']) for cell in table['cells']]
     return latex
 
-def html_to_table(html):
+def html_to_table(html, check=False):
     tokens = html['html']['structure']['tokens']
 
     layout = [[]]
 
     def extend_table(x, y):
-        assert (x >= 0) and (y >= 0)
+        if check:
+            assert (x >= 0) and (y >= 0)
         nonlocal layout
 
         if x >= len(layout[0]):
@@ -46,13 +47,14 @@ def html_to_table(html):
                 layout.append([-1] * len(layout[0]))
 
     def set_cell_val(x, y, val):
-        assert (x >= 0) and (y >= 0)
+        if check:
+            assert (x >= 0) and (y >= 0)
         nonlocal layout
         extend_table(x, y)
         layout[y][x] = val
 
     def get_cell_val(x, y):
-        assert (x >= 0) and (y >= 0)
+        # assert (x >= 0) and (y >= 0)
         nonlocal layout
         extend_table(x, y)
         return layout[y][x]
@@ -111,11 +113,13 @@ def html_to_table(html):
                     set_cell_val(cur_col_idx, cur_row_idx, line_idx)
             col_idx += col_span - 1
 
-    check_continuous(head_rows)
-    check_continuous(body_rows)
-    assert len(set(head_rows) | set(body_rows)) == len(layout)
+    if check:
+        check_continuous(head_rows)
+        check_continuous(body_rows)
+        assert len(set(head_rows) | set(body_rows)) == len(layout)
     layout = np.array(layout)
-    assert np.all(layout >= 0)
+    if check:
+        assert np.all(layout >= 0)
 
     cells_info = list()
     for cell_idx, cell in enumerate(html['html']['cells']):
@@ -161,7 +165,7 @@ def table_to_html(table):
         row_span = [np.min(cell_positions[:, 0]), np.max(cell_positions[:, 0]) + 1]
         col_span = [np.min(cell_positions[:, 1]), np.max(cell_positions[:, 1]) + 1]
         
-        # assert np.all(layout[row_span[0]:row_span[1], col_span[0]:col_span[1]] == cell_idx)
+        assert np.all(layout[row_span[0]:row_span[1], col_span[0]:col_span[1]] == cell_idx)
       
         cells_span.append([row_span, col_span])
 

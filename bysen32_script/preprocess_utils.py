@@ -18,7 +18,7 @@ class PubtabnetParser(object):
     def __init__(self, is_toy=True, split='valid', foldk="10fold0", chunks_nums=16):
         self.split = split
         # self.data_root = '/userhome/dataset/TSR/Fly_TSR/'
-        dataset = "train_jpg480max_wire"
+        dataset = "train_jpg480max"
         self.data_root = '/media/ubuntu/Date12/TableStruct/new_data'
         self.labels_path = os.path.join(self.data_root, f'{dataset}_gt_json')
         self.split_file  = os.path.join(self.data_root, f'{dataset}_{foldk}.json')
@@ -185,11 +185,14 @@ class PubtabnetParser(object):
         print("get structure alphabet cost time {} s.".format(time.time()-start_time))
 
     def base_name2html(self, base_name):
-        table = json.load(open(os.path.join(self.labels_path, base_name + '-gt.json'), 'r'))
-        table['layout'] = np.array(table['layout'])
-        html = table_to_html(table)
+        label = json.load(open(os.path.join(self.labels_path, base_name + '-gt.json'), 'r'))
+        label['layout'] = np.array(label['layout'])
+        try:
+            html = table_to_html(label)
+        except:
+            raise Exception("table_to_html error: ", base_name)
 
-        return html, table
+        return html, label 
 
     def gen_gt_cell(self, label, info): # 处理有线表格
         segs = []
@@ -252,14 +255,14 @@ class PubtabnetParser(object):
             json_info['file_path'] = image_path
 
             # table = json.load(open(os.path.join(self.gt_table_path, base_name + '-gt.json'), 'r'))
-            html, table = self.base_name2html(base_name)
+            html, gt_label = self.base_name2html(base_name)
             # record structure token
-            cells = table['cells']
+            cells = gt_label['cells']
             cell_nums = len(cells)
             token_list = html['html']['structure']['tokens']
             merged_token = self.merge_token(token_list)
-            # encoded_token = self.insert_empty_bbox_token(merged_token, cells)
-            encoded_token = merged_token # 不用上面的插入<eb>
+            encoded_token = self.insert_empty_bbox_token(merged_token, cells)
+            # encoded_token = merged_token # 不用上面的插入<eb>
             encoded_token_str = ','.join(encoded_token)
             # structure_fid.write(encoded_token_str + '\n')
             json_info['label'] = encoded_token_str
