@@ -63,7 +63,7 @@ model = dict(
     max_seq_len=max_seq_len)
 
 albu_train_transforms = [
-    dict(type='JpegCompression', p=0.05),
+    dict(type='ImageCompression', p=0.05),
 
     dict(type='RandomShadow', p=0.05),
 
@@ -115,15 +115,16 @@ TRAIN_STATE = True
 img_norm_cfg = dict(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
 train_pipeline = [
     dict(type='LoadImageFromFile'),
+    dict(type='RandomLineMask', ratio=(0.3, 0.5), p=0.2),
     dict(
         type='TableAspect',
         ratio=(0.8, 1.25),
-        p=0.5,
+        p=0.2,
     ),
-    # dict(
-    #     type='TableRotate',
-    #     p=0.02,
-    # ),
+    dict(
+        type='TableRotate',
+        p=0.02,
+    ),
     dict(
         type='TableResize',
         keep_ratio=True,
@@ -145,7 +146,9 @@ train_pipeline = [
         type='Collect',
         keys=['img'],
         meta_keys=[
-            'filename', 'ori_shape', 'img_shape', 'text', 'scale_factor', 'bbox', 'bbox_masks', 'pad_shape'
+            'filename', 'ori_shape', 'img_shape', 'text', 'scale_factor',
+            'bbox', 'bbox_masks', 'pad_shape',
+            'rc_label', 'layout_label',
         ]),
 ]
 
@@ -170,7 +173,8 @@ valid_pipeline = [
         keys=['img'],
         meta_keys=[
             'filename', 'ori_shape', 'img_shape', 'scale_factor',
-            'img_norm_cfg', 'ori_filename', 'bbox', 'bbox_masks', 'pad_shape'
+            'img_norm_cfg', 'ori_filename',
+            'bbox', 'bbox_masks', 'pad_shape',
         ]),
 ]
 
@@ -201,7 +205,7 @@ test_pipeline = [
 
 dataset_type = 'TEDSDataset'
 train_img_prefix = '/media/ubuntu/Date12/TableStruct/new_data/train_jpg480max/'
-train_anno_file1 = '/media/ubuntu/Date12/TableStruct/new_data/tablemaster/10fold0/cell_box_label/StructureLabelAddEmptyBbox_train/'
+train_anno_file1 = '/media/ubuntu/Date12/TableStruct/new_data/tablemaster_wireless/10fold0/cell_box_label/StructureLabelAddEmptyBbox_train/'
 train1 = dict(
     type=dataset_type,
     img_prefix=train_img_prefix,
@@ -219,7 +223,7 @@ train1 = dict(
     test_mode=False)
 
 valid_img_prefix = '/media/ubuntu/Date12/TableStruct/new_data/train_jpg480max/'
-valid_anno_file1 = '/media/ubuntu/Date12/TableStruct/new_data/tablemaster/10fold0/cell_box_label/StructureLabelAddEmptyBbox_valid/'
+valid_anno_file1 = '/media/ubuntu/Date12/TableStruct/new_data/tablemaster_wireless/10fold0/cell_box_label/StructureLabelAddEmptyBbox_valid/'
 valid = dict(
     type=dataset_type,
     img_prefix=valid_img_prefix,
@@ -238,7 +242,7 @@ valid = dict(
     test_mode=True)
 
 test_img_prefix = '/media/ubuntu/Date12/TableStruct/new_data/train_jpg480max/'
-test_anno_file1 = '/media/ubuntu/Date12/TableStruct/new_data/tablemaster/10fold0/cell_box_label/StructureLabelAddEmptyBbox_valid/'
+test_anno_file1 = '/media/ubuntu/Date12/TableStruct/new_data/tablemaster_wireless/10fold0/cell_box_label/StructureLabelAddEmptyBbox_valid/'
 test = dict(
     type=dataset_type,
     img_prefix=test_img_prefix,

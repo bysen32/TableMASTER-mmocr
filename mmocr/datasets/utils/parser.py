@@ -4,6 +4,7 @@ from mmocr.datasets.builder import PARSERS
 from mmocr.utils import convert_bbox
 import numpy as np
 import cv2
+import copy
 
 @PARSERS.register_module()
 class LineStrParser:
@@ -217,23 +218,22 @@ class TableStrParser:
         # advance parse bbox
         empty_bbox_mask = build_empty_bbox_mask(bboxes)
         bboxes, empty_bbox_mask = align_bbox_mask(bboxes, empty_bbox_mask, text)
-        bboxes = np.array(bboxes)
         empty_bbox_mask = np.array(empty_bbox_mask)
 
-        bbox_masks = build_bbox_mask(text)
-        bbox_masks = bbox_masks * empty_bbox_mask
+        bbox_masks = build_bbox_mask(text) # html token mask
+        bbox_masks = bbox_masks * empty_bbox_mask # empty bbox mask
 
         line_info = {}
         line_info['filename'] = file_name
         line_info['text'] = text
-        line_info['bbox'] = bboxes
+        line_info['bbox'] = np.array(bboxes)
         line_info['bbox_masks'] = bbox_masks
 
         # print('==================================')
 
-        line_info['line'] = line_dict.get('line', '')
-        line_info['label_relations'] = line_dict.get('label_relations', '')
-        line_info['label_htmls'] = line_dict.get('label_htmls', '')
+        line_info['rc_label']     = line_dict['rc_label']
+        line_info['layout_label'] = line_dict['layout_label']
+        line_info['label_htmls']  = line_dict.get('label_htmls', '')
 
         return line_info
 

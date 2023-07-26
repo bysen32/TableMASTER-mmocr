@@ -4,6 +4,10 @@ import os
 import cv2
 import random
 import numpy as np
+import copy
+from utils_bobo.table2label import table2label
+from utils_bobo.format_translate import table_to_html
+from mmocr.datasets.utils.parser import build_empty_bbox_mask, align_bbox_mask, build_bbox_mask
 
 def visual_table_resized_bbox(results):
     bboxes = results['img_info']['bbox']
@@ -128,12 +132,14 @@ class TableResize:
         results['img'] = resize_img
         results['img_shape'] = resize_img.shape
         results['pad_shape'] = resize_img.shape
+        pre_scale_factor = results.get('scale_factor', (1.0, 1.0))
         results['scale_factor'] = scale_factor
+        self._resize_bboxes(results)
+        results['scale_factor'] = pre_scale_factor[0] * scale_factor[0], pre_scale_factor[1] * scale_factor[1]
         # results['keep_ratio'] = self.keep_ratio
 
     def __call__(self, results):
         self._resize_img(results)
-        self._resize_bboxes(results)
         return results
     
 
@@ -193,14 +199,145 @@ class TableAspect:
         results['img'] = resize_img
         results['img_shape'] = resize_img.shape
         results['pad_shape'] = resize_img.shape
+        pre_scale_factor = results.get('scale_factor', (1.0, 1.0))
         results['scale_factor'] = scale_factor
+        self._resize_bboxes(results)
+        results['scale_factor'] = pre_scale_factor[0] * scale_factor[0], pre_scale_factor[1] * scale_factor[1]
         # results['keep_ratio'] = self.keep_ratio
 
     def __call__(self, results):
         self._resize_img(results)
-        self._resize_bboxes(results)
         return results
 
+
+
+@PIPELINES.register_module()
+class RandomLineMask:
+    def __init__(self, ratio=(0.3, 0.7), p=0.5):
+        self.p = p
+        self.ratio = ratio 
+    
+    def insert_empty_bbox_token(self, token_list, cells):
+        """
+        This function used to insert the empty bbox token(from empty_bbox_token_dict) to token_list.
+        check every '<td></td>' and '<td'(table cell token), if 'bbox' not in cell dict, is a empty bbox.
+        :param token_list: [list]. merged tokens.
+        :param cells: [list]. list of table cell dict, each dict include cell's content and coord.
+        :return: tokens add empty bbox str.
+        """
+        bbox_idx = 0
+        add_empty_bbox_token_list = []
+        for token in token_list:
+            if token == '<td></td>' or token == '<td':
+                if cells[bbox_idx]['transcript'] == '':
+                    add_empty_bbox_token_list.append("<eb></eb>")
+                else:
+                    add_empty_bbox_token_list.append(token)
+                bbox_idx += 1
+            else:
+                add_empty_bbox_token_list.append(token)
+        return add_empty_bbox_token_list
+    
+    def count_merge_token_nums(self, token_list):
+        """
+        This function used to get the number of cells by token_list
+        :param token_list: token_list after encoded (merged and insert empty bbox token str).
+        :return: cells nums.
+        """
+        count = 0
+        for token in token_list:
+            if token == '<td':
+                count += 1
+            elif token == '<td></td>':
+                count += 1
+            elif token == '<eb></eb>':
+                count += 1
+            else:
+                pass
+        return count
+    
+    def merge_token(self, token_list):
+        """
+        This function used to merge the common tokens of raw tokens, and reduce the max length.
+        eg. merge '<td>' and '</td>' to '<td></td>' which are always appear together.
+        :param token_list: [list]. the raw tokens from the json line file.
+        :return: merged tokens.
+        """
+        pointer = 0
+        merge_token_list = []
+        # </tbody> is the last token str.
+        while token_list[pointer] != '</tbody>':
+            if token_list[pointer] == '<td>':
+                tmp = token_list[pointer] + token_list[pointer+1]
+                merge_token_list.append(tmp)
+                pointer += 2
+            else:
+                merge_token_list.append(token_list[pointer])
+                pointer += 1
+        merge_token_list.append('</tbody>')
+        return merge_token_list
+    
+    def _update_label(self, results):
+        rc_label = results['rc_label']
+
+        # 基于rc_label重新计算！
+        layout_label = table2label(rc_label)
+        layout_label['layout'] = np.array(layout_label['layout'])
+        html_label = table_to_html(layout_label)
+
+        token_list = html_label['html']['structure']['tokens']
+        merged_token = self.merge_token(token_list)
+        cells = layout_label['cells']
+        encoded_token = self.insert_empty_bbox_token(merged_token, cells)
+
+        cell_num = len(cells)
+        cell_count = self.count_merge_token_nums(encoded_token)
+        assert cell_num == cell_count
+
+        # 得到 text 与 bboxes
+        text = ','.join(encoded_token)
+        bboxes = []
+        for cell in cells:
+            bboxes.append(cell['bbox'])
+
+        # label_htmls = format_html(html_label)
+
+        empty_bbox_mask = build_empty_bbox_mask(bboxes)
+        bboxes, empty_bbox_mask = align_bbox_mask(bboxes, empty_bbox_mask, text)
+        empty_bbox_mask = np.array(empty_bbox_mask)
+
+        bbox_masks = build_bbox_mask(text)
+        bbox_masks = bbox_masks * empty_bbox_mask
+
+        results['img_info']['bbox']       = np.array(bboxes)
+        results['img_info']['bbox_masks'] = bbox_masks
+        results['text'] = text
+
+    def _random_line_mask(self, results):
+        if random.random() < self.p:
+            img = results['img']
+            rc_label = copy.deepcopy(results['img_info']['rc_label'])
+
+            unique_values, value_counts = np.unique(img.reshape(-1, img.shape[-1]), axis=0, return_counts=True)
+            bg_value = unique_values[np.argmax(value_counts)].tolist()
+
+            lines = rc_label['line']
+            mask_count = random.uniform(self.ratio[0], self.ratio[1]) * len(lines)
+            mask_count = int(mask_count)
+
+            for i in range(mask_count):
+                idx = random.randint(0, len(lines)-1)
+                line_seg = lines[idx]
+                cv2.fillPoly(img, np.array([line_seg], dtype=np.int32), color=bg_value)
+                lines.pop(idx)
+            
+            results['img'] = img
+            results['rc_label'] = rc_label
+    
+    def __call__(self, results):
+        self._random_line_mask(results)
+        self._update_label(results)
+        return results
 
 
 
@@ -221,12 +358,12 @@ class TableRotate:
         results['img'] = rotate_img
         results['img_shape'] = rotate_img.shape
         results['pad_shape'] = rotate_img.shape
-        results['rotate_ratio'] = ratio
+        # results['rotate_ratio'] = ratio
         results['rotate_matrix'] = M
 
     def _rotate_bboxes(self, results):
         if 'img_info' in results.keys():
-            if results['img_info'].get('bbox', None) is not None:
+            if results['img_info'].get('bbox', None) is not None: # update ['img_info']['bbox]
                 bboxes = results['img_info']['bbox']
                 M = results['rotate_matrix']
                 for idx, bbox in enumerate(bboxes):

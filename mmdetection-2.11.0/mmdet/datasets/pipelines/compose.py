@@ -35,8 +35,7 @@ class Compose(object):
         Returns:
            dict: Transformed data.
         """
-
-        for t in self.transforms:
+        for t in self.transforms: # step by step transform
             data = t(data)
             if data is None:
                 return None

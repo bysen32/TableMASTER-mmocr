@@ -8,9 +8,9 @@ import shutil
 from collections import defaultdict
 import numpy as np
 import time
-from utils.utils import extend_text_lines
-from utils.cal_f1 import table_to_relations
-from utils.format_translate import table_to_html, format_html
+from utils_bobo.utils import extend_text_lines
+from utils_bobo.cal_f1 import table_to_relations
+from utils_bobo.format_translate import table_to_html, format_html
 from tqdm import tqdm
 
 

@@ -97,10 +97,8 @@ class BaseDataset(Dataset):
                 introduced by pipeline.
         """
         img_info = self.data_infos[index]
-        results = dict(img_info=img_info)
+        results = dict(img_info=img_info) # set key 'img_info'
         self.pre_pipeline(results)
-        # print('results================')
-        # print(results)
         ret = self.pipeline(results)
         return ret
 
@@ -149,7 +147,7 @@ class BaseDataset(Dataset):
                 data = self.prepare_train_img(index)
                 if data is None:
                     raise Exception('prepared train data empty')
-                break
+                break # until find a valid data
             except Exception as e:
                 print_log(f'prepare index {index} with error {e}')
                 index = self._get_next_index(index)

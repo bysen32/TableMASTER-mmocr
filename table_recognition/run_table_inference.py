@@ -42,10 +42,10 @@ if __name__ == "__main__":
     # subprocess.call(f"CUDA_VISIBLE_DEVICES=0 python -u ./table_recognition/table_inference.py 2 0 {A} {B} {C} {D} &"
     #                 f"CUDA_VISIBLE_DEVICES=1 python -u ./table_recognition/table_inference.py 2 1 {A} {B} {C} {D}", shell=True)
 
-    A = structure_master_ckpt           = './checkpoints/10fold0_best_valid98.14.pth'
-    B = structure_master_config         = './configs/textrecog/master/table_master_ResnetExtract_Ranger_lr_cosine.py'
+    A = structure_master_ckpt           = './checkpoints/wireless_10fold0_valid94.01.pth'
+    B = structure_master_config         = './configs/textrecog/master/table_master_ResnetExtract_Ranger_0725.py'
     C = test_folder                     = '/media/ubuntu/Date12/TableStruct/new_data/test_A_jpg480max'
-    D = structure_master_result_folder  = './output/structure_result/test_A_jpg480max_10fold0_valid98.14'
+    D = structure_master_result_folder  = './output/structure_result/test_A_jpg480max_wireless_10fold0_valid94.01'
 
     subprocess.call(f"CUDA_VISIBLE_DEVICES=0 python -u ./table_recognition/table_inference.py 2 0 {A} {B} {C} {D} &"
                     f"CUDA_VISIBLE_DEVICES=1 python -u ./table_recognition/table_inference.py 2 1 {A} {B} {C} {D}", shell=True)

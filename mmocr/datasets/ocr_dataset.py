@@ -5,6 +5,11 @@ from mmocr.datasets.base_dataset import BaseDataset
 
 from tqdm import tqdm
 
+import numpy as np
+from utils_bobo.table2label import table2label
+from utils_bobo.format_translate import table_to_html, format_html
+from utils_bobo.cal_f1 import table_to_relations
+
 
 @DATASETS.register_module()
 class OCRDataset(BaseDataset):
@@ -46,7 +51,11 @@ class TEDSDataset(BaseDataset):
     def pre_pipeline(self, results):
         results['img_prefix'] = self.img_prefix
         results['img_info']['ann_file'] = self.ann_file
-        results['text'] = results['img_info']['text']
+
+        results['text']         = results['img_info']['text']
+        results['rc_label']     = results['img_info']['rc_label']
+        results['layout_label'] = results['img_info']['layout_label']
+        # results['html_label']   = results['img_info']['html_label']
 
     def evaluate(self, results, metric='acc', logger=None, **kwargs):
         """Evaluate the dataset.
@@ -67,14 +76,21 @@ class TEDSDataset(BaseDataset):
         print("Cal pred data to htmls...")
         for i in tqdm(range(len(self))):
             label_info = self.data_infos[i]
+            rc_label = label_info['rc_label']
             pred_info = results[i]
-            
-            pred_relations, pred_htmls = cal_pred(pred_info, label_info)
+
+            pred_relations, pred_htmls = cal_pred(pred_info, rc_label)
             pred_relations_list.append(pred_relations)
             pred_htmls_list.append(pred_htmls)
 
-            label_relations_list.append(label_info['label_relations'])
-            label_htmls_list.append(label_info['label_htmls'])
+            layout_label = table2label(rc_label)
+            layout_label['layout'] = np.array(layout_label['layout'])
+            html_label = table_to_html(layout_label)
+            label_htmls = format_html(html_label)
+
+            label_relation = table_to_relations(layout_label)
+            label_relations_list.append(label_relation)
+            label_htmls_list.append(label_htmls)
 
         eval_results = eval_teds_metric(pred_relations_list, label_relations_list, pred_htmls_list, label_htmls_list)
 
