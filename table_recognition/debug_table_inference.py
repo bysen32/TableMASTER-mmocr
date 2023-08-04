@@ -483,7 +483,7 @@ if __name__ == '__main__':
     # Runner
     chunk_nums = 1
     chunk_id = 0
-    A = structure_master_ckpt           = './checkpoints/10fold0_best.pth'
+    A = structure_master_ckpt           = './checkpoints/wire_10fold1_valid97.58.pth'
     B = structure_master_config         = './configs/textrecog/master/table_master_ResnetExtract_Ranger_0705.py'
     C = test_folder                     = '/media/ubuntu/Date12/TableStruct/new_data/debug'
     D = structure_master_result_folder  = './output/structure_result/debug'

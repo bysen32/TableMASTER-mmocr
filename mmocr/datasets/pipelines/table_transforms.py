@@ -1,4 +1,7 @@
+from typing import Any
 from mmdet.datasets.builder import PIPELINES
+from Polygon import Polygon
+import shapely
 
 import os
 import cv2
@@ -206,7 +209,8 @@ class TableAspect:
         # results['keep_ratio'] = self.keep_ratio
 
     def __call__(self, results):
-        self._resize_img(results)
+        if random.random() < self.p:
+            self._resize_img(results)
         return results
 
 
@@ -314,29 +318,40 @@ class RandomLineMask:
         results['text'] = text
 
     def _random_line_mask(self, results):
-        if random.random() < self.p:
-            img = results['img']
-            rc_label = copy.deepcopy(results['img_info']['rc_label'])
+        img = results['img']
+        rc_label = copy.deepcopy(results['img_info']['rc_label'])
 
-            unique_values, value_counts = np.unique(img.reshape(-1, img.shape[-1]), axis=0, return_counts=True)
-            bg_value = unique_values[np.argmax(value_counts)].tolist()
+        unique_values, value_counts = np.unique(img.reshape(-1, img.shape[-1]), axis=0, return_counts=True)
+        bg_value = unique_values[np.argmax(value_counts)].tolist()
 
-            lines = rc_label['line']
-            mask_count = random.uniform(self.ratio[0], self.ratio[1]) * len(lines)
-            mask_count = int(mask_count)
+        lines = rc_label['line']
+        line_cnt = len(rc_label['line'])
+        mask_count = random.uniform(self.ratio[0], self.ratio[1]) * len(lines)
 
-            for i in range(mask_count):
-                idx = random.randint(0, len(lines)-1)
-                line_seg = lines[idx]
-                cv2.fillPoly(img, np.array([line_seg], dtype=np.int32), color=bg_value)
-                lines.pop(idx)
-            
-            results['img'] = img
-            results['rc_label'] = rc_label
+        if line_cnt < 10:
+            mask_count = int(line_cnt * 0.5)
+        if line_cnt < 50:
+            mask_count = int(line_cnt * 0.4)
+        elif line_cnt < 100:
+            mask_count = int(line_cnt * 0.3)
+        elif line_cnt < 200:
+            mask_count = int(line_cnt * 0.2)
+        else:
+            mask_count = int(line_cnt * 0.1)
+
+        for _ in range(mask_count):
+            idx = random.randint(0, len(lines)-1)
+            line_seg = lines[idx]
+            cv2.fillPoly(img, np.array([line_seg], dtype=np.int32), color=bg_value)
+            lines.pop(idx)
+        
+        results['img'] = img
+        results['rc_label'] = rc_label
     
     def __call__(self, results):
-        self._random_line_mask(results)
-        self._update_label(results)
+        if random.random() < self.p:
+            self._random_line_mask(results)
+            self._update_label(results)
         return results
 
 
@@ -377,8 +392,221 @@ class TableRotate:
             pass
 
     def __call__(self, results):
-        self._rotate_img(results)
-        self._rotate_bboxes(results)
+        if random.random() < self.p:
+            self._rotate_img(results)
+            self._rotate_bboxes(results)
+        return results
+
+
+
+@PIPELINES.register_module()
+class RandomLineFill(RandomLineMask):
+    def __init__(self, ratio=0.1, p=0.6):
+        self.p = p
+        self.ratio = ratio
+    
+    def _random_line_fill(self, results):
+        rc_label = results['rc_label']
+        img_array = results['img']
+        
+        def segmentation_to_polygon(segmentation):
+            polygon = shapely.Polygon()
+            for contour in segmentation:
+                polygon = polygon.union(shapely.Polygon(contour))
+            return polygon
+
+        row_polys = [segmentation_to_polygon([row]) for row in rc_label['row']]
+        col_polys = [segmentation_to_polygon([col]) for col in rc_label['col']]
+        line_polys = [segmentation_to_polygon([line]) for line in rc_label['line']]
+
+        H, W = img_array.shape[:2]
+
+        temp_img = copy.deepcopy(img_array)
+        min_area = float('inf')
+        line_num = len(rc_label['line'])
+        for row_poly in row_polys:
+            for col_poly in col_polys:
+                try:
+                    if not row_poly.intersects(col_poly):
+                        continue
+                    cell_poly = row_poly.intersection(col_poly)
+                except:
+                    continue
+
+                if cell_poly.area < 0.002 * H * W:
+                    continue
+
+                min_area = min(min_area, cell_poly.area)
+
+                for line_poly in line_polys:
+                    if line_poly.intersects(cell_poly): # 一点重叠都不要有
+                        break
+                else:
+                    if random.random() < self.ratio:
+                        line_idxs = list(range(len(line_polys)))
+                        random.shuffle(line_idxs)
+                        cell_w, cell_h = cell_poly.bounds[2]-cell_poly.bounds[0], cell_poly.bounds[3]-cell_poly.bounds[1]
+                        cell_cx, cell_cy = cell_poly.centroid.coords[0]
+                        cell_cx, cell_cy = int(cell_cx), int(cell_cy)
+                        for idx in line_idxs:
+                            line_poly = line_polys[idx]
+                            line_w, line_h = line_poly.bounds[2]-line_poly.bounds[0], line_poly.bounds[3]-line_poly.bounds[1]
+                            if line_poly.area < cell_poly.area * 0.25 and  cell_w * 0.2 < line_w < cell_w * 0.5 and  cell_h * 0.2 < line_h < cell_h * 0.8:
+                                x0, y0, x1, y1 = line_poly.bounds
+                                w, h = int(x1-x0+1), int(y1-y0+1)
+                                x0, y0 = int(x0), int(y0)
+                                cell_x0, cell_y0 = int(cell_cx-w//2), int(cell_cy-h//2)
+                                if cell_x0 < 0 or cell_y0 < 0 or cell_x0+w > W or cell_y0+h > H:
+                                    continue
+                                try:
+                                    img_array[cell_y0:cell_y0+h, cell_x0:cell_x0+w] = img_array[y0:y0+h, x0:x0+w]
+                                    line_poly = shapely.Polygon([[cell_x0, cell_y0], [cell_x0, cell_y0+h],
+                                                        [cell_x0+w, cell_y0+h], [cell_x0+w, cell_y0]])
+                                    rc_label['line'].append(cell_poly.intersection(line_poly).exterior.coords[:-1])
+                                except:
+                                    pass
+                                break
+        results['img'] = img_array
+        results['rc_label'] = rc_label
+    
+    def __call__(self, results):
+        if random.random() < self.p:
+            self._random_line_fill(results)
+            self._update_label(results)
+        return results
+
+@PIPELINES.register_module()
+class BlackTest:
+    def __call__(self, results):
+        rc_label = results['rc_label']
+        img = results['img']
+        for line in rc_label['line']:
+            cv2.polylines(img, [np.array(line, dtype=np.int32)], isClosed=True, color=(255, 0, 0), thickness=1)
+        results['img'] = img
+        return results
+
+
+@PIPELINES.register_module()
+class RandomRCMask(RandomLineMask):
+    def __init__(self, ratio=0.5, p=0.5):
+        self.p = p
+        self.ratio = ratio
+    
+    def _remove_overlay_line(self, seg, lines, iou_threshold=0.5):
+        new_line = []
+        rc_poly = Polygon(seg)
+        for i in range(len(lines)):
+            line_poly = Polygon(lines[i])
+            iou = (rc_poly & line_poly).area() / line_poly.area()
+            if iou > iou_threshold:
+                continue
+            new_line.append(lines[i])
+        return new_line
+    
+    
+    def _boundingbox_crop(self, img_array, rc_label):
+        pts = []
+        if rc_label['is_wireless']:
+            for line in rc_label['line']:
+                pts.extend(line)
+        else:
+            for cell in rc_label['cell']:
+                pts.extend(cell)
+        pts = np.array(pts, dtype=np.int32)
+        gap = 10
+        x0, y0, x1, y1 = int(pts[:, 0].min()), int(pts[:, 1].min()), int(pts[:, 0].max()), int(pts[:, 1].max())
+        x0 = max(0, x0-gap)
+        y0 = max(0, y0-gap)
+        x1 = min(img_array.shape[1], x1+gap)
+        y1 = min(img_array.shape[0], y1+gap)
+        img_array = img_array[y0:y1, x0:x1]
+
+        for idx, row in enumerate(rc_label['row']):
+            row = np.array(row)
+            row[:, 0] -= x0
+            row[:, 1] -= y0
+            rc_label['row'][idx] = row.tolist()
+        for idx, col in enumerate(rc_label['col']):
+            col = np.array(col)
+            col[:, 0] -= x0
+            col[:, 1] -= y0
+            rc_label['col'][idx] = col.tolist()
+        for idx, line in enumerate(rc_label['line']):
+            line = np.array(line)
+            line[:, 0] -= x0
+            line[:, 1] -= y0
+            rc_label['line'][idx] = line.tolist()
+        for idx, cell in enumerate(rc_label['cell']):
+            cell = np.array(cell)
+            cell[:, 0] -= x0
+            cell[:, 1] -= y0
+            rc_label['cell'][idx] = cell.tolist()
+
+        return img_array, rc_label
+
+    
+    def _random_rc_mask(self, results):
+        rc_label = results['rc_label']
+        img_array = results['img']
+        ratio = self.ratio
+
+        ori_img_array = copy.deepcopy(img_array)
+        ori_rc_label = copy.deepcopy(rc_label)
+
+        unique_values, value_counts = np.unique(img_array.reshape(-1, img_array.shape[-1]), axis=0, return_counts=True)
+        bg_color = unique_values[np.argmax(value_counts)]
+
+        if random.random() < 0.5:
+            top_cnt = 0
+            bottom_cnt = random.randint(0, int(len(rc_label['row'])*ratio))
+            new_row = []
+            for i in range(len(rc_label['row'])):
+                if i < top_cnt or i >= len(rc_label['row']) - bottom_cnt:
+                    row_seg = rc_label['row'][i]
+                    cv2.fillPoly(img_array, np.array([row_seg], dtype=np.int32), color=bg_color.tolist())
+                    rc_label['line'] = self._remove_overlay_line(row_seg, rc_label['line'])
+                    rc_label['cell'] = self._remove_overlay_line(row_seg, rc_label['cell'])
+                else:
+                    new_row.append(rc_label['row'][i])
+            rc_label['row'] = new_row
+        else:
+            left_cnt = 0
+            right_cnt = random.randint(0, int(len(rc_label['col'])*ratio))
+            new_col = []
+            for i in range(len(rc_label['col'])):
+                if i < left_cnt or i >= len(rc_label['col']) - right_cnt:
+                    col_seg = rc_label['col'][i]
+                    cv2.fillPoly(img_array, np.array([col_seg], dtype=np.int32), color=bg_color.tolist())
+                    rc_label['line'] = self._remove_overlay_line(col_seg, rc_label['line'])
+                    rc_label['cell'] = self._remove_overlay_line(col_seg, rc_label['cell'])
+                else:
+                    new_col.append(rc_label['col'][i])
+            rc_label['col'] = new_col
+
+        img_array, rc_label = self._boundingbox_crop(img_array, rc_label)
+
+        struct_label = table2label(rc_label)
+        ori_struct_label = table2label(ori_rc_label)
+        n_row, n_col = np.array(struct_label['layout']).shape
+        ori_n_row, ori_n_col = np.array(ori_struct_label['layout']).shape
+
+
+
+        if n_row == ori_n_row or n_col == ori_n_col: # keep one dimension
+            results['img'] = img_array
+            results['rc_label'] = rc_label
+            results['img_shape'] = img_array.shape
+            results['ori_shape'] = img_array.shape
+        else:
+            results['img'] = ori_img_array
+            results['rc_label'] = ori_rc_label
+            results['img_shape'] = ori_img_array.shape
+            results['ori_shape'] = ori_img_array.shape
+
+    def __call__(self, results):
+        if random.random() < self.p:
+            self._random_rc_mask(results)
+            self._update_label(results)
         return results
 
 

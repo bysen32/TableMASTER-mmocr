@@ -15,7 +15,7 @@ from .transforms import (ColorJitter, RandomCropFlip, RandomCropInstances,
                          RandomCropPolyInstances, RandomRotatePolyInstances,
                          RandomRotateTextDet, RandomScaling, ScaleAspectJitter,
                          SquareResizePad)
-from .table_transforms import TableResize, TablePad, TableBboxEncode, TableAspect, TableRotate, RandomLineMask
+from .table_transforms import TableResize, TablePad, TableBboxEncode, TableAspect, TableRotate, RandomLineMask, RandomLineFill, RandomRCMask, BlackTest
 
 __all__ = [
     'LoadTextAnnotations', 'NormalizeOCR', 'OnlineCropOCR', 'ResizeOCR',
@@ -28,5 +28,5 @@ __all__ = [
     'sort_vertex', 'LoadImageFromNdarray', 'sort_vertex8', 'FCENetTargets',
     'RandomScaling', 'RandomCropFlip', 'NerTransform', 'ToTensorNER',
     'LoadImageFromLMDB', 'TableResize', 'TablePad', 'TableBboxEncode',
-    'LoadImageFromNdarrayV2', 'TableAspect', 'TableRotate', 'RandomLineMask'
+    'LoadImageFromNdarrayV2', 'TableAspect', 'TableRotate', 'RandomLineMask', 'RandomLineFill', 'RandomRCMask', 'BlackTest'
 ]

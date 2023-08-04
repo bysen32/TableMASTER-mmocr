@@ -2,6 +2,7 @@ import os
 import glob
 import json
 import mmcv
+from tqdm import tqdm
 
 
 def list_to_file(filename, lines):
@@ -109,7 +110,7 @@ def list_from_folder_table_json(folder, max_seq_len):
     files = glob.glob(folder)
     count = 0
     print("Loading table data ...")
-    for file in files:
+    for file in tqdm(files):
         json_info = json.load(open(file, 'r'))
 
         # filter the samples, which length is greater than max_seq_len-2.
@@ -121,9 +122,8 @@ def list_from_folder_table_json(folder, max_seq_len):
 
         # process display
         count += 1
-        if count % 2000 == 0:
-            print("Loading table data, process : {}".format(count))
-
+        # if count % 2000 == 0:
+        #     print("Loading table data, process : {}".format(count))
     # display samples number of dataset
     print("Load {} samples from folder : {}".format(len(item_list), folder))
 

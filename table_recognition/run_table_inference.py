@@ -25,30 +25,17 @@ if __name__ == "__main__":
     #                 "CUDA_VISIBLE_DEVICES=6 python -u ./table_recognition/table_inference.py 8 6 2 &"
     #                 "CUDA_VISIBLE_DEVICES=7 python -u ./table_recognition/table_inference.py 8 7 2", shell=True)
 
-    A = structure_master_ckpt           = './checkpoints/wire_10fold2_best.pth'
-    B = structure_master_config         = './configs/textrecog/master/table_master_ResnetExtract_Ranger_0705_wire.py'
-    C = test_folder                     = '/media/ubuntu/Date12/TableStruct/new_data/test_A_jpg480max_wire'
-    D = structure_master_result_folder  = './output/structure_result/test_A_jpg480max_wire'
-        
-    # subprocess.call(f"CUDA_VISIBLE_DEVICES=0 python -u ./table_recognition/table_inference.py 2 0 {A} {B} {C} {D} &"
-    #                 f"CUDA_VISIBLE_DEVICES=1 python -u ./table_recognition/table_inference.py 2 1 {A} {B} {C} {D}", shell=True)
-
-
-    A = structure_master_ckpt           = './checkpoints/wireless_10fold2_best.pth'
-    B = structure_master_config         = './configs/textrecog/master/table_master_ResnetExtract_Ranger_0705_wireless.py'
-    C = test_folder                     = '/media/ubuntu/Date12/TableStruct/new_data/test_A_jpg480max_wireless'
-    D = structure_master_result_folder  = './output/structure_result/test_A_jpg480max_wireless'
-
-    # subprocess.call(f"CUDA_VISIBLE_DEVICES=0 python -u ./table_recognition/table_inference.py 2 0 {A} {B} {C} {D} &"
-    #                 f"CUDA_VISIBLE_DEVICES=1 python -u ./table_recognition/table_inference.py 2 1 {A} {B} {C} {D}", shell=True)
-
-    A = structure_master_ckpt           = './checkpoints/wireless_10fold0_valid94.01.pth'
-    B = structure_master_config         = './configs/textrecog/master/table_master_ResnetExtract_Ranger_0725.py'
+    A = structure_master_ckpt           = './checkpoints/wireless01_10fold1_epoch24.pth'
+    B = structure_master_config         = './configs/textrecog/master/table_master_ResnetExtract_Ranger_0804_wireless.py'
     C = test_folder                     = '/media/ubuntu/Date12/TableStruct/new_data/test_A_jpg480max'
-    D = structure_master_result_folder  = './output/structure_result/test_A_jpg480max_wireless_10fold0_valid94.01'
+    C = test_folder                     = '/media/ubuntu/Date12/TableStruct/new_data/test_A_jpg480max_wireless'
+    D = structure_master_result_folder  = './output/structure_result/test_A_jpg480max_wireless01_10fold1'
 
-    subprocess.call(f"CUDA_VISIBLE_DEVICES=0 python -u ./table_recognition/table_inference.py 2 0 {A} {B} {C} {D} &"
-                    f"CUDA_VISIBLE_DEVICES=1 python -u ./table_recognition/table_inference.py 2 1 {A} {B} {C} {D}", shell=True)
+    # subprocess.call(f"CUDA_VISIBLE_DEVICES=0 python -u ./table_recognition/table_inference2.py 2 0 {A} {B} {C} {D} 2 &"
+    #                 f"CUDA_VISIBLE_DEVICES=1 python -u ./table_recognition/table_inference2.py 2 1 {A} {B} {C} {D} 2 ", shell=True)
+                    
+    subprocess.call(f"CUDA_VISIBLE_DEVICES=0 python -u ./table_recognition/table_inference.py 2 0 {A} {B} {C} {D} 2 &"
+                    f"CUDA_VISIBLE_DEVICES=1 python -u ./table_recognition/table_inference.py 2 1 {A} {B} {C} {D} 2 ", shell=True)
 
     # recognition
     # subprocess.call("CUDA_VISIBLE_DEVICES=0 python -u ./table_recognition/table_inference.py 8 1 1", shell=True)

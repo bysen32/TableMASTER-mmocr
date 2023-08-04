@@ -121,12 +121,12 @@ class TABLEMASTER(EncodeDecodeRecognizer):
         Returns:
             list[str]: Text label result of each image.
         """
-        feat = self.extract_feat(img)
+        feat = self.extract_feat(img) # [(256,240,240), (256,120,120), (512, 60, 60)] = (3,480,480)
         feat = feat[-1]
 
         out_enc = None
         if self.encoder is not None:
-            out_enc = self.encoder(feat)
+            out_enc = self.encoder(feat) # + pe
 
         out_dec, out_bbox = self.decoder(
             feat, out_enc, None, img_metas, train_mode=False)

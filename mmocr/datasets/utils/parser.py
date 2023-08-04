@@ -232,8 +232,8 @@ class TableStrParser:
         # print('==================================')
 
         line_info['rc_label']     = line_dict['rc_label']
-        line_info['layout_label'] = line_dict['layout_label']
-        line_info['label_htmls']  = line_dict.get('label_htmls', '')
+        # line_info['layout_label'] = line_dict['layout_label']
+        # line_info['label_htmls']  = line_dict.get('label_htmls', '')
 
         return line_info
 

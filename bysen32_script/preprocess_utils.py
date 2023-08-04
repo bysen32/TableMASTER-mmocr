@@ -8,10 +8,10 @@ import shutil
 from collections import defaultdict
 import numpy as np
 import time
-from utils_bobo.utils import extend_text_lines
-from utils_bobo.cal_f1 import table_to_relations
-from utils_bobo.format_translate import table_to_html, format_html
-from utils_bobo.format_translate import table_to_html as layout_label2html_label
+from utils.utils import extend_text_lines
+from utils.cal_f1 import table_to_relations
+from utils.format_translate import table_to_html, format_html
+from utils.format_translate import table_to_html as layout_label2html_label
 from tqdm import tqdm
 
 
@@ -21,11 +21,11 @@ class PubtabnetParser(object):
         # self.data_root = '/userhome/dataset/TSR/Fly_TSR/'
         dataset = "train_jpg480max"
         self.data_root = '/media/ubuntu/Date12/TableStruct/new_data'
-        self.layout_label_dir = os.path.join(self.data_root, f'{dataset}_gt_json')
+        self.layout_label_dir = os.path.join(self.data_root, f'{dataset}_wireless_gt_json')
         self.split_file_path  = os.path.join(self.data_root, f'{dataset}_{foldk}.json')
         self.image_dir        = os.path.join(self.data_root, dataset)
         self.save_root        = os.path.join(self.data_root, 'tablemaster_wireless', foldk, 'cell_box_label')
-        self.error_file_path  = os.path.join(self.data_root, f"{dataset}_error.json")
+        self.error_file_path  = os.path.join(self.data_root, f"{dataset}_wireless_error.json")
         self.structure_txt_folder = os.path.join(self.save_root, f"StructureLabelAddEmptyBbox_{split}")
         self.is_toy = is_toy
         self.dataset_size = 10 if is_toy else 99999999999
@@ -205,7 +205,8 @@ class PubtabnetParser(object):
     def get_rc_label(self, base_name):
         path = os.path.join(self.image_dir, f'{base_name}.json')
         rc_label = json.load(open(path, 'r'))
-        rc_label['is_wireless'] = True # TODO!!!
+        # if self.split == "train":
+        #     rc_label['is_wireless'] = True # TODO!!!
         return rc_label
 
     def base_name2html(self, base_name):
@@ -260,6 +261,12 @@ class PubtabnetParser(object):
                 3. cell coord from json line file 
             """
             train_label = {}
+
+            rc_label = self.get_rc_label(image_id)
+            if not rc_label['is_wireless']: # only pass wireless data
+                continue
+            train_label['rc_label'] = rc_label
+
             # record image path
             image_path = os.path.join(self.image_dir, image_id + '.jpg')
             train_label['file_path'] = image_path
@@ -284,8 +291,6 @@ class PubtabnetParser(object):
                 bboxes.append(cell['bbox'])
             train_label['bbox'] = bboxes
 
-            rc_label = self.get_rc_label(image_id)
-            train_label['rc_label'] = rc_label
 
             # 0706 不分有线无线
             # if not info['is_wireless']:

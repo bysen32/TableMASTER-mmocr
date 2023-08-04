@@ -140,7 +140,7 @@ class End2End:
             with open(os.path.join('/data_0/cache', pkl_file), 'rb') as f:
                 detect_results = pickle.load(f)
         else:
-            detect_results = self.detector.predict_single_file(file_path)
+            detect_results = self.detector.predict_single_file(file_path) # detect results
         img = imread(file_path)
         detect_results[0]['bbox'] = clip_detect_bbox(img, detect_results[0]['bbox'])
         detect_results[0]['bbox'] = delete_invalid_bbox(img, detect_results[0]['bbox'])
@@ -420,6 +420,7 @@ class Runner:
         """
         print("Divide files to chunks for multiply gpu device inference.")
         file_paths = glob.glob(os.path.join(folder, '*.jpg'))
+        # file_paths = glob.glob(os.path.join(folder, '*.png'))
         counts = len(file_paths)
         nums_per_chunk = counts // chunks_nums
         img_chunks = []
@@ -488,32 +489,19 @@ if __name__ == '__main__':
     C = sys.argv[5]
     D = sys.argv[6]
 
+    task_id = int(sys.argv[7])
+
     cfg = {
-        'pse_config': './configs/textdet/psenet/psenet_r50_fpnf_600e_pubtabnet.py',
-        'master_config': './configs/textrecog/master/master_lmdb_ResnetExtra_tableRec_dataset_dynamic_mmfp16.py',
-        'pse_ckpt': '/data_0/dataset/demo_model_v1/pse_epoch_600.pth',
-        'master_ckpt': '/data_0/dataset/demo_model_v1/master_epoch_6.pth',
-        'end2end_result_folder': './output/end2end_val_result',
+        'pse_config'            : './configs/textdet/psenet/psenet_r50_fpnf_600e_iftable.py',
+        'pse_ckpt'              : './checkpoints/iftable_epoch_30.pth',
+        'master_config'         : './configs/textrecog/master/master_lmdb_ResnetExtra_tableRec_dataset_dynamic_mmfp16.py',
+        'master_ckpt'           : './checkpoints/master_epoch_6.pth',
+        'end2end_result_folder' : './output/end2end_val_result',
 
-        # -----------  checkpoint --------------
-        # 'structure_master_ckpt': '/data_0/dataset/demo_model_v1/tablemaster_best.pth',
-        # 'structure_master_ckpt': './checkpoints/epoch_22_val92.12.pth', # new TEDsmetric 07/04
-        # 'structure_master_ckpt': './checkpoints/epoch_30_val93.03.pth', # new TEDsmetric 07/06 train/test on 480 -> [91.8]
-        # 'structure_master_ckpt': './checkpoints/epoch_21_val94.78_test91.93.pth', # new TEDsmetric 07/04
-
-        # ↓ ---- new TEDsmetric 07/08 | train/test on 480 | 10fold0--- ↓ # valid93.98 test 92.189 >> 1st. 92.233
-        # 'structure_master_ckpt': './checkpoints/epoch_18_val93.98_10fold0.pth',
-        # ↓ ---- new TEDsmetric 07/08 | train/test on 480 | 10fold1--- ↓ # valid92.90 test 92.203 >> 1st. 92.233
-        # 'structure_master_ckpt': './checkpoints/epoch_30_val92.90_10fold1.pth',
-        # ↓ ---- new TEDsmetric 07/09 | train/test on 480 | 10fold2--- ↓ # valid92.87 test ? >> 1st. ?
-        # 'structure_master_ckpt': './checkpoints/epoch_22_val93.64_10fold0.pth',
-        #
-        # 'structure_master_ckpt': './checkpoints/wire_10fold2_epoch_30_val95.98.pth',
-
-        'structure_master_ckpt': A,
-        'structure_master_config': B,
-        'test_folder': C,
-        'structure_master_result_folder': D,
+        'structure_master_ckpt'             : A,
+        'structure_master_config'           : B,
+        'test_folder'                       : C,
+        'structure_master_result_folder'    : D,
 
         'chunks_nums': chunk_nums
     }
@@ -523,6 +511,12 @@ if __name__ == '__main__':
     # runner.run(test_folder)
 
     runner = Runner(cfg)
-    runner.run_structure_single_chunk(chunk_id=chunk_id)
+    if task_id == 0:
+        runner.run_detect_single_chunk(chunk_id=chunk_id)
+    elif task_id == 1:
+        num_det_res_file = 2
+        runner.run_recognize_single_chunk(chunk_id=chunk_id, nums_det_result_part=num_det_res_file)
+    elif task_id == 2:
+        runner.run_structure_single_chunk(chunk_id=chunk_id)
 
 

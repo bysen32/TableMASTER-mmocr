@@ -54,7 +54,7 @@ class TEDSDataset(BaseDataset):
 
         results['text']         = results['img_info']['text']
         results['rc_label']     = results['img_info']['rc_label']
-        results['layout_label'] = results['img_info']['layout_label']
+        # results['layout_label'] = results['img_info']['layout_label']
         # results['html_label']   = results['img_info']['html_label']
 
     def evaluate(self, results, metric='acc', logger=None, **kwargs):
@@ -75,9 +75,9 @@ class TEDSDataset(BaseDataset):
 
         print("Cal pred data to htmls...")
         for i in tqdm(range(len(self))):
+            pred_info = results[i]
             label_info = self.data_infos[i]
             rc_label = label_info['rc_label']
-            pred_info = results[i]
 
             pred_relations, pred_htmls = cal_pred(pred_info, rc_label)
             pred_relations_list.append(pred_relations)

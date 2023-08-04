@@ -3,10 +3,10 @@ from scipy.spatial import ConvexHull
 import numpy as np
 import copy
 # import tools.data.utils.polygon_helper as polygon_helper
-from utils_bobo.utils import get_shared_line, parse_relation_from_table, get_span_cells, \
+from utils.utils import get_shared_line, parse_relation_from_table, get_span_cells, \
     get_shared_line_id, sort_shared_line, format_layout, parse_gt_label, extend_text_lines
 
-from utils_bobo.format_translate import segmentation_to_bbox
+from utils.format_translate import segmentation_to_bbox
 
 
 
@@ -32,20 +32,26 @@ def fuse_gt_info(label, table):
         label['cells'][idx]['transcript'] = ''
 
     # 计算逻辑单元cells与文本line的关系, 更新字段transcript, ::主要是更新有线表格的transcript
-    label['cells'] = extend_text_lines(label['cells'], table['line'], table['line_valid'])
+    if table['is_wireless']:
+        label['cells'] = extend_text_lines(label['cells'], table['line'], table['line_valid'])
+    else:
+        label['cells'] = extend_text_lines(label['cells'], table['line'])
+    
     for idx, cell in enumerate(label['cells']):
         if cell['transcript'] == '': # 清空不包含文本的有线表格单元
             label['cells'][idx]['bbox'] = [0, 0, 0, 0]
             label['cells'][idx]['segmentation'] = [[[0, 0], [0, 0], [0, 0], [0, 0]]]
         else:
-            ids = [int(i) for i in cell['transcript'].split('-')]
-            segmentation = []
-            for id in ids:
-                segmentation.append(table['line'][id])
-            bbox = segmentation_to_bbox(segmentation)
-            label['cells'][idx]['bbox'] = bbox
-            label['cells'][idx]['segmentation'] = segmentation
-            pass # 包含文本的cell不做处理预测外边界框
+            if table['is_wireless']:
+                ids = [int(i) for i in cell['transcript'].split('-')]
+                segmentation = []
+                for id in ids:
+                    segmentation.append(table['line'][id])
+                bbox = segmentation_to_bbox(segmentation)
+                label['cells'][idx]['bbox'] = bbox
+                label['cells'][idx]['segmentation'] = segmentation
+            else:
+                pass
     return label
 
 
@@ -70,7 +76,7 @@ def table2label(table):
 
 
 def judge_error(table, label):
-    count = len(table['line']) # 注意，这里不区分有线无线了，fuse_gt_info已处理
+    count = len(table['line'])
     flag = np.zeros(count)
     
     # 1. 检查 transcript 全包含
