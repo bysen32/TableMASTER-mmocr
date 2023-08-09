@@ -1,4 +1,5 @@
 import numpy as np
+import copy
 from mmcv.utils import print_log
 from torch.utils.data import Dataset
 
@@ -96,7 +97,7 @@ class BaseDataset(Dataset):
             dict: Training data and annotation after pipeline with new keys
                 introduced by pipeline.
         """
-        img_info = self.data_infos[index]
+        img_info = copy.deepcopy(self.data_infos[index])
         results = dict(img_info=img_info) # set key 'img_info'
         self.pre_pipeline(results)
         ret = self.pipeline(results)

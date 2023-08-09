@@ -21,11 +21,11 @@ class PubtabnetParser(object):
         # self.data_root = '/userhome/dataset/TSR/Fly_TSR/'
         dataset = "train_jpg480max"
         self.data_root = '/media/ubuntu/Date12/TableStruct/new_data'
-        self.layout_label_dir = os.path.join(self.data_root, f'{dataset}_wireless_gt_json')
+        self.layout_label_dir = os.path.join(self.data_root, f'{dataset}_gt_json')
         self.split_file_path  = os.path.join(self.data_root, f'{dataset}_{foldk}.json')
         self.image_dir        = os.path.join(self.data_root, dataset)
-        self.save_root        = os.path.join(self.data_root, 'tablemaster_wireless', foldk, 'cell_box_label')
-        self.error_file_path  = os.path.join(self.data_root, f"{dataset}_wireless_error.json")
+        self.save_root        = os.path.join(self.data_root, 'tablemaster', foldk, 'cell_box_label')
+        self.error_file_path  = os.path.join(self.data_root, f"{dataset}_error.json")
         self.structure_txt_folder = os.path.join(self.save_root, f"StructureLabelAddEmptyBbox_{split}")
         self.is_toy = is_toy
         self.dataset_size = 10 if is_toy else 99999999999
@@ -263,7 +263,7 @@ class PubtabnetParser(object):
             train_label = {}
 
             rc_label = self.get_rc_label(image_id)
-            if not rc_label['is_wireless']: # only pass wireless data
+            if self.split == "valid" and rc_label['is_wireless'] == False: # only pass wireless data
                 continue
             train_label['rc_label'] = rc_label
 
@@ -280,6 +280,16 @@ class PubtabnetParser(object):
             cells = layout_label['cells']
             encoded_token = self.insert_empty_bbox_token(merged_token, cells)
             train_label['label'] = ','.join(encoded_token)
+
+
+            if self.split == 'train':
+                need_pass = False
+                for i in range(16, 50): # 过滤太大的span
+                    if f"{i}" in train_label['label']:
+                        need_pass = True
+                        break 
+                if need_pass:
+                    continue
 
             cell_nums = len(cells)
             cell_count = self.count_merge_token_nums(encoded_token)

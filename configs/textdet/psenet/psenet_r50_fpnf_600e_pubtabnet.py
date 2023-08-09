@@ -16,7 +16,7 @@ model = dict(
         num_stages=4,
         out_indices=(0, 1, 2, 3),
         frozen_stages=-1,
-        norm_cfg=dict(type='SyncBN', requires_grad=True),
+        norm_cfg=dict(type='BN', requires_grad=True),
         norm_eval=True,
         style='caffe'),
     neck=dict(
@@ -36,7 +36,7 @@ model = dict(
     test_cfg=None)
 
 dataset_type = 'IcdarDataset'
-data_root = ''
+data_root = '/media/ubuntu/Date12/TableStruct/pubtabnet_icdar_data'
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 

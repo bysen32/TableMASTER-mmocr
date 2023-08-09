@@ -81,9 +81,9 @@ parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 # Dataset parameters
 group = parser.add_argument_group('Dataset parameters')
 # Keep this argument outside of the dataset group because it is positional.
-parser.add_argument('data_dir', metavar='DIR',
+parser.add_argument('--data_dir', metavar='DIR', default='/media/ubuntu/Date12/TableStruct/new_data/wire_or_not',
                     help='path to dataset')
-group.add_argument('--dataset', '-d', metavar='NAME', default='',
+group.add_argument('--dataset', '-d', metavar='NAME', default='torch/image_folder',
                     help='dataset type (default: ImageFolder/ImageTar if empty)')
 group.add_argument('--train-split', metavar='NAME', default='train',
                     help='dataset train split (default: train)')
@@ -98,7 +98,7 @@ group.add_argument('--class-map', default='', type=str, metavar='FILENAME',
 group = parser.add_argument_group('Model parameters')
 group.add_argument('--model', default='resnet50', type=str, metavar='MODEL',
                     help='Name of model to train (default: "resnet50"')
-group.add_argument('--pretrained', action='store_true', default=False,
+group.add_argument('--pretrained', action='store_true', default=True,
                     help='Start with pretrained version of specified network (if avail)')
 group.add_argument('--initial-checkpoint', default='', type=str, metavar='PATH',
                     help='Initialize model from this checkpoint (default: none)')
@@ -106,7 +106,7 @@ group.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='Resume full model and optimizer state from checkpoint (default: none)')
 group.add_argument('--no-resume-opt', action='store_true', default=False,
                     help='prevent resume of optimizer state when resuming model')
-group.add_argument('--num-classes', type=int, default=None, metavar='N',
+group.add_argument('--num-classes', type=int, default=2, metavar='N',
                     help='number of label classes (Model default if None)')
 group.add_argument('--gp', default=None, type=str, metavar='POOL',
                     help='Global pool type, one of (fast, avg, max, avgmax, avgmaxc). Model default if None.')
@@ -122,7 +122,7 @@ group.add_argument('--std', type=float, nargs='+', default=None, metavar='STD',
                     help='Override std deviation of dataset')
 group.add_argument('--interpolation', default='', type=str, metavar='NAME',
                     help='Image resize interpolation type (overrides model)')
-group.add_argument('-b', '--batch-size', type=int, default=128, metavar='N',
+group.add_argument('-b', '--batch-size', type=int, default=32, metavar='N',
                     help='Input batch size for training (default: 128)')
 group.add_argument('-vb', '--validation-batch-size', type=int, default=None, metavar='N',
                     help='Validation batch size override (default: None)')
@@ -181,7 +181,7 @@ group.add_argument('--warmup-lr', type=float, default=0.0001, metavar='LR',
                     help='warmup learning rate (default: 0.0001)')
 group.add_argument('--min-lr', type=float, default=1e-6, metavar='LR',
                     help='lower lr bound for cyclic schedulers that hit 0 (1e-5)')
-group.add_argument('--epochs', type=int, default=300, metavar='N',
+group.add_argument('--epochs', type=int, default=30, metavar='N',
                     help='number of epochs to train (default: 300)')
 group.add_argument('--epoch-repeats', type=float, default=0., metavar='N',
                     help='epoch repeat multiplier (number of times to repeat dataset epoch per train epoch).')
@@ -299,7 +299,7 @@ group.add_argument('-j', '--workers', type=int, default=4, metavar='N',
                     help='how many training processes to use (default: 4)')
 group.add_argument('--save-images', action='store_true', default=False,
                     help='save images of input bathes every log interval for debugging')
-group.add_argument('--amp', action='store_true', default=False,
+group.add_argument('--amp', action='store_false', default=True,
                     help='use NVIDIA Apex AMP or Native AMP for mixed precision training')
 group.add_argument('--apex-amp', action='store_true', default=False,
                     help='Use NVIDIA Apex AMP mixed precision')

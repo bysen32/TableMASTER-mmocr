@@ -39,14 +39,14 @@ class IcdarDataset(CocoDataset):
         """
 
         self.coco = COCO(ann_file)
-        self.cat_ids = self.coco.get_cat_ids(cat_names=self.CLASSES)
+        self.cat_ids = self.coco.getCatIds(catNms=self.CLASSES)
         self.cat2label = {cat_id: i for i, cat_id in enumerate(self.cat_ids)}
-        self.img_ids = self.coco.get_img_ids()
+        self.img_ids = self.coco.getImgIds()
         data_infos = []
 
         count = 0
         for i in self.img_ids:
-            info = self.coco.load_imgs([i])[0]
+            info = self.coco.loadImgs([i])[0]
             info['filename'] = info['file_name']
             data_infos.append(info)
             count = count + 1

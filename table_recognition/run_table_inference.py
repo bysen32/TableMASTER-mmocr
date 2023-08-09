@@ -25,8 +25,8 @@ if __name__ == "__main__":
     #                 "CUDA_VISIBLE_DEVICES=6 python -u ./table_recognition/table_inference.py 8 6 2 &"
     #                 "CUDA_VISIBLE_DEVICES=7 python -u ./table_recognition/table_inference.py 8 7 2", shell=True)
 
-    A = structure_master_ckpt           = './checkpoints/wireless01_10fold1_epoch24.pth'
-    B = structure_master_config         = './configs/textrecog/master/table_master_ResnetExtract_Ranger_0804_wireless.py'
+    A = structure_master_ckpt           = './checkpoints/wireless_10fold1_blacktest_epoch22.pth'
+    B = structure_master_config         = './configs/textrecog/master/table_master_ResnetExtract_Ranger_0807_wireless.py'
     C = test_folder                     = '/media/ubuntu/Date12/TableStruct/new_data/test_A_jpg480max'
     C = test_folder                     = '/media/ubuntu/Date12/TableStruct/new_data/test_A_jpg480max_wireless'
     D = structure_master_result_folder  = './output/structure_result/test_A_jpg480max_wireless01_10fold1'

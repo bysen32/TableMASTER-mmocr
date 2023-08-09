@@ -52,16 +52,16 @@ class CocoDataset(CustomDataset):
                 'pycocotools.')
 
         self.coco = COCO(ann_file)
-        self.cat_ids = self.coco.get_cat_ids(cat_names=self.CLASSES)
+        self.cat_ids = self.coco.getCatIds(catNms=self.CLASSES)
         self.cat2label = {cat_id: i for i, cat_id in enumerate(self.cat_ids)}
-        self.img_ids = self.coco.get_img_ids()
+        self.img_ids = self.coco.getImgIds()
         data_infos = []
         total_ann_ids = []
         for i in self.img_ids:
-            info = self.coco.load_imgs([i])[0]
+            info = self.coco.loadImgs([i])[0]
             info['filename'] = info['file_name']
             data_infos.append(info)
-            ann_ids = self.coco.get_ann_ids(img_ids=[i])
+            ann_ids = self.coco.getAnnIds(imgIds=[i])
             total_ann_ids.extend(ann_ids)
         assert len(set(total_ann_ids)) == len(
             total_ann_ids), f"Annotation ids in '{ann_file}' are not unique!"
@@ -78,8 +78,8 @@ class CocoDataset(CustomDataset):
         """
 
         img_id = self.data_infos[idx]['id']
-        ann_ids = self.coco.get_ann_ids(img_ids=[img_id])
-        ann_info = self.coco.load_anns(ann_ids)
+        ann_ids = self.coco.getAnnIds(imgIds=[img_id])
+        ann_info = self.coco.loadAnns(ann_ids)
         return self._parse_ann_info(self.data_infos[idx], ann_info)
 
     def get_cat_ids(self, idx):
@@ -93,8 +93,8 @@ class CocoDataset(CustomDataset):
         """
 
         img_id = self.data_infos[idx]['id']
-        ann_ids = self.coco.get_ann_ids(img_ids=[img_id])
-        ann_info = self.coco.load_anns(ann_ids)
+        ann_ids = self.coco.getAnnIds(imgIds=[img_id])
+        ann_info = self.coco.loadAnns(ann_ids)
         return [ann['category_id'] for ann in ann_info]
 
     def _filter_imgs(self, min_size=32):
@@ -105,7 +105,7 @@ class CocoDataset(CustomDataset):
         # obtain images that contain annotations of the required categories
         ids_in_cat = set()
         for i, class_id in enumerate(self.cat_ids):
-            ids_in_cat |= set(self.coco.cat_img_map[class_id])
+            ids_in_cat |= set(self.coco.catToImgs[class_id])
         # merge the image id sets of the two conditions and use the merged set
         # to filter out images if self.filter_empty_gt=True
         ids_in_cat &= ids_with_ann
@@ -313,8 +313,8 @@ class CocoDataset(CustomDataset):
     def fast_eval_recall(self, results, proposal_nums, iou_thrs, logger=None):
         gt_bboxes = []
         for i in range(len(self.img_ids)):
-            ann_ids = self.coco.get_ann_ids(img_ids=self.img_ids[i])
-            ann_info = self.coco.load_anns(ann_ids)
+            ann_ids = self.coco.getAnnIds(imgIds=self.img_ids[i])
+            ann_info = self.coco.loadAnns(ann_ids)
             if len(ann_info) == 0:
                 gt_bboxes.append(np.zeros((0, 4)))
                 continue

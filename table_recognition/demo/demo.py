@@ -4,10 +4,10 @@ from argparse import ArgumentParser
 import torch
 from mmcv.image import imread
 
-from mmdet.apis import init_detector
-from mmocr.apis.inference import model_inference
-from mmocr.datasets import build_dataset  # noqa: F401
-from mmocr.models import build_detector  # noqa: F401
+# from mmdet.apis import init_detector
+# from mmocr.apis.inference import model_inference
+# from mmocr.datasets import build_dataset  # noqa: F401
+# from mmocr.models import build_detector  # noqa: F401
 
 import sys
 import glob
@@ -35,17 +35,18 @@ if __name__ == '__main__':
     parser.add_argument('--tablemaster_config', type=str,
                         default='./configs/textrecog/master/table_master_ResnetExtract_Ranger_0705.py',
                         help='tablemaster config file')
+
     parser.add_argument('--pse_checkpoint', type=str,
-                        default='/data_0/dataset/demo_model_v1/pse_epoch_600.pth',
+                        default='./checkpoints/pse_epoch_600.pth',
                         help='pse checkpoint file')
     parser.add_argument('--master_checkpoint', type=str,
-                        default='/data_0/dataset/demo_model_v1/master_epoch_6.pth',
+                        default='./checkpoints/master_epoch_6.pth',
                         help='master checkpoint file')
     parser.add_argument('--tablemaster_checkpoint', type=str,
-                        default='/data_0/dataset/demo_model_v1/tablemaster_best.pth',
+                        default='./checkpoints/pubtabnet_epoch_16_0.7767.pth',
                         help='tablemaster checkpoint file')
     parser.add_argument('--out_dir',
-                        type=str, default='/data_0/dataset/demo_model_v1/outputs', help='Dir to save results')
+                        type=str, default='./output', help='Dir to save results')
     args = parser.parse_args()
 
     # main process
@@ -53,12 +54,15 @@ if __name__ == '__main__':
     import codecs
     sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
     img_path = '/data_0/TableMASTER-mmocr/table_recognition/demo/ImproveMViT_table.png'
+    img_path = '/table_recognition/demo/PMC1168909_005_00.png'
 
     # text line detection and recognition end2end predict
     pse_inference = Detect_Inference(args.pse_config, args.pse_checkpoint)
     master_inference = Recognition_Inference(args.master_config, args.master_checkpoint)
     end2end = End2End(pse_inference, master_inference)
     end2end_result, end2end_result_dict = end2end.predict(img_path)
+    # end2end_result_dict = \
+    #       {filename: [dict(bbox=bbox, bbox_score=bbox_score, text=text, score=score), ...]}
     torch.cuda.empty_cache()
     del pse_inference
     del master_inference

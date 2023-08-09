@@ -12,9 +12,47 @@ from utils_bobo.table2label import table2label
 from utils_bobo.format_translate import table_to_html
 from mmocr.datasets.utils.parser import build_empty_bbox_mask, align_bbox_mask, build_bbox_mask
 
+def visual_struct_label(results):
+    src_img = results['img'].copy()
+    if results['img_info'].get('rc_label', None) is not None:
+        rc_label = results['img_info']['rc_label']
+        struct_label = table2label(rc_label)
+    elif results['img_info'].get('layout_label', None) is not None:
+        struct_label = results['img_info']['layout_label']
+        struct_label['layout'] = np.array(struct_label['layout'])
+    else:
+        raise ValueError('results should have rc_label or struct_label keys.')
+
+    col2color = []
+    for i in range(3):
+        for j in range(3):
+            for k in range(3):
+                col2color.append((i*100, j*100, k*100))
+    col2color.append((255, 0, 0))
+    col2color = np.array(col2color)
+
+    # 遍历坐标列表
+    for i, cell in enumerate(struct_label["cells"]):
+        x1, y1, x2, y2 = np.array(cell['bbox']).astype(dtype=int).tolist()
+        row_start, row_end = cell["row_start_idx"], cell["row_end_idx"]
+        col_start, col_end = cell["col_start_idx"], cell["col_end_idx"]
+        text = f"{row_start}" if row_start == row_end else f"{row_start}-{row_end}"
+        text += f",{col_start}" if col_start == col_end else f",{col_start}-{col_end}"
+
+        color = col2color[col_start] if col_start < col2color.shape[0] else col2color[-1]
+        width, height = src_img.shape[1], src_img.shape[0]
+        font_scale = min(width, height)//1024
+        font_scale = max(font_scale, 0.5)
+        font_thickness = int(font_scale * 2)
+        # font_height = int(font_scale * 20)
+        cv2.putText(src_img, text, (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, font_scale, color.tolist(), font_thickness)
+        cv2.rectangle(src_img, (x1, y1, x2-x1, y2-y1), color.tolist(), 1)
+
+    return src_img
+
 def visual_table_resized_bbox(results):
     bboxes = results['img_info']['bbox']
-    img = results['img']
+    img = results['img'].copy()
     for bbox in bboxes:
         img = cv2.rectangle(img, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), (0, 255, 0), thickness=1)
     return img
@@ -103,6 +141,22 @@ class TableResize:
         else:
             # testing phase
             pass
+    
+    def _resize_rc_label(self, results):
+        img_shape = results['img_shape']
+        if 'img_info' in results.keys():
+            if results['img_info'].get('rc_label', None) is not None:
+                rc_label = results['img_info']['rc_label']
+                scale_factor = results['scale_factor']
+                for key in ['row', 'col', 'line', 'cell']:
+                    for idx, pts in enumerate(rc_label[key]):
+                        pts = np.array(pts)
+                        pts[:, 0] = pts[:, 0] * scale_factor[1]
+                        pts[:, 1] = pts[:, 1] * scale_factor[0]
+                        rc_label[key][idx] = pts.tolist()
+                results['img_info']['rc_label'] = rc_label
+        else:
+            pass
 
     def _resize_img(self, results):
         img = results['img']
@@ -138,11 +192,13 @@ class TableResize:
         pre_scale_factor = results.get('scale_factor', (1.0, 1.0))
         results['scale_factor'] = scale_factor
         self._resize_bboxes(results)
+        self._resize_rc_label(results)
         results['scale_factor'] = pre_scale_factor[0] * scale_factor[0], pre_scale_factor[1] * scale_factor[1]
         # results['keep_ratio'] = self.keep_ratio
 
     def __call__(self, results):
         self._resize_img(results)
+
         return results
     
 
@@ -187,6 +243,22 @@ class TableAspect:
         else:
             # testing phase
             pass
+    
+    def _resize_rc_label(self, results):
+        if 'img_info' in results.keys():
+            if results['img_info'].get('rc_label', None) is not None:
+                rc_label = results['img_info']['rc_label']
+                scale_factor = results['scale_factor']
+                for key in ['row', 'col', 'line', 'cell']:
+                    for idx, pts in enumerate(rc_label[key]):
+                        pts = np.array(pts)
+                        pts[:, 0] = pts[:, 0] * scale_factor[1]
+                        pts[:, 1] = pts[:, 1] * scale_factor[0]
+                        rc_label[key][idx] = pts.tolist()
+                results['img_info']['rc_label'] = rc_label
+        else:
+            # testing phase
+            pass
 
     def _resize_img(self, results):
         img = results['img']
@@ -205,6 +277,7 @@ class TableAspect:
         pre_scale_factor = results.get('scale_factor', (1.0, 1.0))
         results['scale_factor'] = scale_factor
         self._resize_bboxes(results)
+        self._resize_rc_label(results)
         results['scale_factor'] = pre_scale_factor[0] * scale_factor[0], pre_scale_factor[1] * scale_factor[1]
         # results['keep_ratio'] = self.keep_ratio
 
@@ -282,8 +355,7 @@ class RandomLineMask:
         return merge_token_list
     
     def _update_label(self, results):
-        rc_label = results['rc_label']
-
+        rc_label = results['img_info']['rc_label']
         # 基于rc_label重新计算！
         layout_label = table2label(rc_label)
         layout_label['layout'] = np.array(layout_label['layout'])
@@ -315,11 +387,12 @@ class RandomLineMask:
 
         results['img_info']['bbox']       = np.array(bboxes)
         results['img_info']['bbox_masks'] = bbox_masks
-        results['text'] = text
+        results['img_info']['rc_label']   = rc_label
+        results['img_info']['text']       = text
 
     def _random_line_mask(self, results):
         img = results['img']
-        rc_label = copy.deepcopy(results['img_info']['rc_label'])
+        rc_label = results['img_info']['rc_label']
 
         unique_values, value_counts = np.unique(img.reshape(-1, img.shape[-1]), axis=0, return_counts=True)
         bg_value = unique_values[np.argmax(value_counts)].tolist()
@@ -344,14 +417,16 @@ class RandomLineMask:
             line_seg = lines[idx]
             cv2.fillPoly(img, np.array([line_seg], dtype=np.int32), color=bg_value)
             lines.pop(idx)
+        rc_label['line'] = lines
         
         results['img'] = img
-        results['rc_label'] = rc_label
+        results['img_info']['rc_label'] = rc_label
     
     def __call__(self, results):
-        if random.random() < self.p:
-            self._random_line_mask(results)
-            self._update_label(results)
+        if results['img_info'].get('rc_label', None) is not None:
+            if random.random() < self.p:
+                self._random_line_mask(results)
+                self._update_label(results)
         return results
 
 
@@ -406,7 +481,7 @@ class RandomLineFill(RandomLineMask):
         self.ratio = ratio
     
     def _random_line_fill(self, results):
-        rc_label = results['rc_label']
+        rc_label = results['img_info']['rc_label']
         img_array = results['img']
         
         def segmentation_to_polygon(segmentation):
@@ -421,7 +496,6 @@ class RandomLineFill(RandomLineMask):
 
         H, W = img_array.shape[:2]
 
-        temp_img = copy.deepcopy(img_array)
         min_area = float('inf')
         line_num = len(rc_label['line'])
         for row_poly in row_polys:
@@ -467,23 +541,49 @@ class RandomLineFill(RandomLineMask):
                                     pass
                                 break
         results['img'] = img_array
-        results['rc_label'] = rc_label
+        results['img_info']['rc_label'] = rc_label
     
     def __call__(self, results):
-        if random.random() < self.p:
-            self._random_line_fill(results)
-            self._update_label(results)
+        if results['img_info'].get('rc_label', None) is not None:
+            if random.random() < self.p:
+                self._random_line_fill(results)
+                self._update_label(results)
         return results
+
+
 
 @PIPELINES.register_module()
 class BlackTest:
     def __call__(self, results):
-        rc_label = results['rc_label']
-        img = results['img']
-        for line in rc_label['line']:
-            cv2.polylines(img, [np.array(line, dtype=np.int32)], isClosed=True, color=(255, 0, 0), thickness=1)
-        results['img'] = img
+        if 'rc_label' in results['img_info'].keys():
+            rc_label = results['img_info']['rc_label']
+            img_array = copy.deepcopy(results['img'])
+            unique_values, value_counts = np.unique(img_array.reshape(-1, img_array.shape[-1]), axis=0, return_counts=True)
+            bg_color = unique_values[np.argmax(value_counts)]
+            invert_color = (bg_color + 128) % 256
+            for line in rc_label['line']:
+                cv2.fillPoly(img_array, [np.array(line, dtype=np.int32)], color=invert_color.tolist())
+            results['img'] = img_array 
         return results
+
+
+
+@PIPELINES.register_module()
+class LabelVisible:
+    def __init__(self, dir_name='Temp'):
+        self.dir_name = dir_name
+    
+    def __call__(self, results):
+        # img = visual_struct_label(results)
+        img = visual_table_resized_bbox(results)
+        file_name = os.path.basename(results['img_info']['filename'])
+        save_dir = f'/media/ubuntu/Date12/TableStruct/debug/{self.dir_name}'
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        save_path = os.path.join(save_dir, file_name)
+        cv2.imwrite(save_path, img)
+        return results
+
 
 
 @PIPELINES.register_module()
@@ -515,50 +615,62 @@ class RandomRCMask(RandomLineMask):
         pts = np.array(pts, dtype=np.int32)
         gap = 10
         x0, y0, x1, y1 = int(pts[:, 0].min()), int(pts[:, 1].min()), int(pts[:, 0].max()), int(pts[:, 1].max())
-        x0 = max(0, x0-gap)
-        y0 = max(0, y0-gap)
-        x1 = min(img_array.shape[1], x1+gap)
-        y1 = min(img_array.shape[0], y1+gap)
+        x0 = np.clip(int(x0-gap), 0, img_array.shape[1]-1)
+        y0 = np.clip(int(y0-gap), 0, img_array.shape[0]-1)
+        x1 = np.clip(int(x1+gap), 0, img_array.shape[1]-1)
+        y1 = np.clip(int(y1+gap), 0, img_array.shape[0]-1)
         img_array = img_array[y0:y1, x0:x1]
 
-        for idx, row in enumerate(rc_label['row']):
-            row = np.array(row)
-            row[:, 0] -= x0
-            row[:, 1] -= y0
-            rc_label['row'][idx] = row.tolist()
-        for idx, col in enumerate(rc_label['col']):
-            col = np.array(col)
-            col[:, 0] -= x0
-            col[:, 1] -= y0
-            rc_label['col'][idx] = col.tolist()
-        for idx, line in enumerate(rc_label['line']):
-            line = np.array(line)
-            line[:, 0] -= x0
-            line[:, 1] -= y0
-            rc_label['line'][idx] = line.tolist()
-        for idx, cell in enumerate(rc_label['cell']):
-            cell = np.array(cell)
-            cell[:, 0] -= x0
-            cell[:, 1] -= y0
-            rc_label['cell'][idx] = cell.tolist()
-
+        for key in ['row', 'col', 'line', 'cell']:
+            for idx, pts in enumerate(rc_label[key]):
+                pts = np.array(pts)
+                pts[:, 0] -= x0
+                pts[:, 1] -= y0
+                rc_label[key][idx] = pts.tolist()
         return img_array, rc_label
 
+    def _sort_sementations(self, rows, cols):
+        # sort rows from top to down
+        row_locs = []
+        for row_seg in rows:
+            points_ = np.vstack([itm for itm in row_seg])
+            row_loc_ = np.mean(points_, axis=0)[1]
+            row_locs.append(row_loc_)
+        row_index = np.argsort(row_locs)
+        rows = [rows[idx_] for idx_ in row_index]
+
+        # sort cols from left to right
+        col_locs = []
+        for col_seg in cols:
+            points_ = np.vstack([itm for itm in col_seg])
+            col_loc_ = np.mean(points_, axis=0)[0]
+            col_locs.append(col_loc_)
+        col_index = np.argsort(col_locs)
+        cols = [cols[idx_] for idx_ in col_index]
+
+        return rows, cols
     
     def _random_rc_mask(self, results):
-        rc_label = results['rc_label']
+        rc_label = results['img_info']['rc_label']
         img_array = results['img']
         ratio = self.ratio
 
         ori_img_array = copy.deepcopy(img_array)
         ori_rc_label = copy.deepcopy(rc_label)
+        ori_struct_label = table2label(ori_rc_label)
+        ori_n_row, ori_n_col = np.array(ori_struct_label['layout']).shape
 
         unique_values, value_counts = np.unique(img_array.reshape(-1, img_array.shape[-1]), axis=0, return_counts=True)
         bg_color = unique_values[np.argmax(value_counts)]
 
+        rc_label['row'], rc_label['cols'] = self._sort_sementations(rc_label['row'], rc_label['col'])
+
         if random.random() < 0.5:
+            if ori_n_row < 3:
+                return
             top_cnt = 0
             bottom_cnt = random.randint(0, int(len(rc_label['row'])*ratio))
+            bottom_cnt = max(bottom_cnt, 1)
             new_row = []
             for i in range(len(rc_label['row'])):
                 if i < top_cnt or i >= len(rc_label['row']) - bottom_cnt:
@@ -570,8 +682,11 @@ class RandomRCMask(RandomLineMask):
                     new_row.append(rc_label['row'][i])
             rc_label['row'] = new_row
         else:
+            if ori_n_col < 3:
+                return
             left_cnt = 0
             right_cnt = random.randint(0, int(len(rc_label['col'])*ratio))
+            right_cnt = max(right_cnt, 1)
             new_col = []
             for i in range(len(rc_label['col'])):
                 if i < left_cnt or i >= len(rc_label['col']) - right_cnt:
@@ -586,27 +701,24 @@ class RandomRCMask(RandomLineMask):
         img_array, rc_label = self._boundingbox_crop(img_array, rc_label)
 
         struct_label = table2label(rc_label)
-        ori_struct_label = table2label(ori_rc_label)
         n_row, n_col = np.array(struct_label['layout']).shape
-        ori_n_row, ori_n_col = np.array(ori_struct_label['layout']).shape
-
-
 
         if n_row == ori_n_row or n_col == ori_n_col: # keep one dimension
             results['img'] = img_array
-            results['rc_label'] = rc_label
             results['img_shape'] = img_array.shape
             results['ori_shape'] = img_array.shape
+            results['img_info']['rc_label'] = rc_label
         else:
             results['img'] = ori_img_array
-            results['rc_label'] = ori_rc_label
             results['img_shape'] = ori_img_array.shape
             results['ori_shape'] = ori_img_array.shape
+            results['img_info']['rc_label'] = ori_rc_label
 
     def __call__(self, results):
-        if random.random() < self.p:
-            self._random_rc_mask(results)
-            self._update_label(results)
+        if results['img_info'].get('rc_label', None) is not None:
+            if random.random() < self.p:
+                self._random_rc_mask(results)
+                self._update_label(results)
         return results
 
 

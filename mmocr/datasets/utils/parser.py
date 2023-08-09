@@ -155,17 +155,13 @@ def align_bbox_mask(bboxes, empty_bbox_mask, label):
     :param label: table structure label
     :return: aligned bbox structure label
     """
-    pattern = ['<td></td>', '<td', '<eb></eb>',
-               '<eb1></eb1>', '<eb2></eb2>', '<eb3></eb3>',
-               '<eb4></eb4>', '<eb5></eb5>', '<eb6></eb6>',
-               '<eb7></eb7>', '<eb8></eb8>', '<eb9></eb9>',
-               '<eb10></eb10>']
     assert len(bboxes) == get_bbox_nums_by_text(label) == len(empty_bbox_mask)
     bbox_count = 0
     structure_token_nums = len(label.split(','))
     # init with [0,0,0,0], and change the real bbox to corresponding value
     aligned_bbox = [[0., 0., 0., 0.] for _ in range(structure_token_nums)]
     aligned_empty_bbox_mask = [1 for _ in range(structure_token_nums)]
+    pattern = ['<td></td>', '<td', '<eb></eb>',]
     for idx, l in enumerate(label.split(',')):
         if l in pattern:
             aligned_bbox[idx] = bboxes[bbox_count]
@@ -211,13 +207,13 @@ class TableStrParser:
     def get_item(self, data_ret, index):
         map_index = index % len(data_ret)
         line_dict = data_ret[map_index]
-        file_name = os.path.basename(line_dict['file_path'])
+        file_name = line_dict['file_path']
         text = line_dict['label']
         bboxes = line_dict['bbox']
 
         # advance parse bbox
         empty_bbox_mask = build_empty_bbox_mask(bboxes)
-        bboxes, empty_bbox_mask = align_bbox_mask(bboxes, empty_bbox_mask, text)
+        bboxes, empty_bbox_mask = align_bbox_mask(bboxes, empty_bbox_mask, text) # 有效bbox填充到text对应长度
         empty_bbox_mask = np.array(empty_bbox_mask)
 
         bbox_masks = build_bbox_mask(text) # html token mask
@@ -231,7 +227,8 @@ class TableStrParser:
 
         # print('==================================')
 
-        line_info['rc_label']     = line_dict['rc_label']
+        line_info['rc_label']     = line_dict.get('rc_label', None)
+        line_info['layout_label'] = line_dict.get('layout_label', None)
         # line_info['layout_label'] = line_dict['layout_label']
         # line_info['label_htmls']  = line_dict.get('label_htmls', '')
 

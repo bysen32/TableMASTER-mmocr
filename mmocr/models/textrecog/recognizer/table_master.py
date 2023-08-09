@@ -93,6 +93,7 @@ class TABLEMASTER(EncodeDecodeRecognizer):
         out_dec, out_bbox = self.decoder(
             feat, out_enc, targets_dict, img_metas, train_mode=True)
 
+        # 1. out_dec
         loss_inputs = (
             out_dec,
             targets_dict,
@@ -100,6 +101,7 @@ class TABLEMASTER(EncodeDecodeRecognizer):
         )
         losses = self.loss(*loss_inputs)
 
+        # 2. out_bbox
         bbox_loss_inputs = (
             out_bbox,
             targets_dict,

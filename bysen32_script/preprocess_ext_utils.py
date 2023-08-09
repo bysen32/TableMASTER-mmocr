@@ -8,9 +8,9 @@ import shutil
 from collections import defaultdict
 import numpy as np
 import time
-from utils_bobo.utils import extend_text_lines
-from utils_bobo.cal_f1 import table_to_relations
-from utils_bobo.format_translate import table_to_html, format_html
+from utils.utils import extend_text_lines
+from utils.cal_f1 import table_to_relations
+from utils.format_translate import table_to_html, format_html
 from tqdm import tqdm
 
 
@@ -20,12 +20,13 @@ class PubtabnetParser(object):
         # self.data_root = '/userhome/dataset/TSR/Fly_TSR/'
         dataset = "train"
         self.data_root = '/media/ubuntu/Date12/TableStruct/ext_data'
-        self.labels_path = os.path.join(self.data_root, f'{dataset}')
-        self.split_file  = os.path.join(self.data_root, f'{dataset}_{foldk}.json')
-        self.raw_img_root = os.path.join(self.data_root, dataset)
+        self.layout_label_dir = os.path.join(self.data_root, dataset)
+        self.split_file_path  = os.path.join(self.data_root, f'{dataset}_{foldk}.json')
+        self.img_dir          = os.path.join(self.data_root, dataset)
+        self.save_root        = os.path.join(self.data_root, 'tablemaster', foldk, 'cell_box_label')
+        self.labels_path      = os.path.join(self.data_root, f'{dataset}')
         # self.gt_table_path = os.path.join(self.data_root, 'train_jpg_gt_json')
         # 这个保存的位置有问题 save_root
-        self.save_root = os.path.join(self.data_root, 'tablemaster', f'{foldk}', 'cell_box_label')
         self.structure_txt_folder = self.save_root + '/StructureLabelAddEmptyBbox_{}/'.format(split)
         self.is_toy = is_toy
         self.dataset_size = 10 if is_toy else 99999999999
@@ -50,7 +51,7 @@ class PubtabnetParser(object):
         '''
         return list [00000.json, ...]
         '''
-        return json.load(open(self.split_file, 'r'))[self.split][:self.dataset_size]
+        return json.load(open(self.split_file_path, 'r'))[self.split][:self.dataset_size]
 
 
     def make_folders(self):
@@ -165,7 +166,7 @@ class PubtabnetParser(object):
         start_time = time.time()
         print("get structure alphabet ...")
         alphabet = []
-        jsons = json.load(open(self.split_file, 'r'))
+        jsons = json.load(open(self.split_file_path, 'r'))
         datas = jsons['train'] + jsons['valid']
         with open(self.alphabet_path, 'w') as f:
             for json_name in tqdm(datas):
@@ -184,11 +185,17 @@ class PubtabnetParser(object):
         print("get structure alphabet cost time {} s.".format(time.time()-start_time))
 
     def base_name2html(self, base_name):
-        table = json.load(open(os.path.join(self.labels_path, base_name + '.json'), 'r'))
-        table['layout'] = np.array(table['layout'])
-        html = table_to_html(table)
+        layout_label = self.get_layout_label(base_name)
+        html = table_to_html(layout_label)
+        return html, layout_label
+    
 
-        return html, table
+    def get_layout_label(self, base_name):
+        fpath = os.path.join(self.layout_label_dir, f"{base_name}.json")
+        layout_label = json.load(open(fpath, 'r'))
+        layout_label['layout'] = np.array(layout_label['layout'])
+        return layout_label
+
 
     def gen_gt_cell(self, label, info): # 处理有线表格
         segs = []
@@ -240,68 +247,40 @@ class PubtabnetParser(object):
                 2. encoded structure token
                 3. cell coord from json line file 
             """
-            json_filename = base_name + '.json'
-            json_filepath = os.path.join(self.structure_txt_folder, json_filename)
-            # structure_fid = open(txt_filepath, 'w')
 
-            json_info = {}
+            train_label = {}
+
             ########## 1. file_path ##########
-            # record image path
-            image_path = os.path.join(self.raw_img_root, base_name + '.jpg')
-            # structure_fid.write(image_path + '\n')
-            json_info['file_path'] = image_path
+            image_path = os.path.join(self.img_dir, base_name + '.jpg')
+            train_label['file_path'] = image_path
 
 
             ########## 2. label ##########
-            html, table = self.base_name2html(base_name)
+            html, layout_label = self.base_name2html(base_name)
             # record structure token
-            cells = table['cells']
-            cell_nums = len(cells)
+            cells = layout_label['cells']
             token_list = html['html']['structure']['tokens']
             merged_token = self.merge_token(token_list)
             encoded_token = self.insert_empty_bbox_token(merged_token, cells)
-            # encoded_token = merged_token # 不用上面的函数，因为不需要加空bbox
-            encoded_token_str = ','.join(encoded_token)
-            # structure_fid.write(encoded_token_str + '\n')
-            json_info['label'] = encoded_token_str
+            train_label['label'] = ','.join(encoded_token)
 
             # record bbox coord
+            cell_nums = len(cells)
             cell_count = self.count_merge_token_nums(encoded_token)
             assert cell_nums == cell_count
             
             ########## 3. bbox ##########
             bboxes = []
             for cell in cells:
-                # bbox_line = ','.join([str(b) for b in cell['bbox']]) + '\n'
-                # structure_fid.write(bbox_line)
                 bboxes.append(cell['bbox'])
-            json_info['bbox'] = bboxes
+            train_label['bbox'] = bboxes
 
-            ########## 4. cell coord ##########
-            # info_file = os.path.join(self.raw_img_root, base_name + '.json')
-            # info = json.load(open(info_file, 'r'))
-            lines = []
-            for bbox in bboxes:
-                x0, y0, x1, y1 = bbox
-                lines.append([[x0, y0], [x0, y1], [x1, y1], [x1, y0]])
-            json_info['line'] = lines
+            ########## 4. layout_label ##########
+            layout_label['layout'] = layout_label['layout'].tolist()
+            train_label['layout_label'] = layout_label
 
-            ########## 5. layout ##########
-            label_path = os.path.join(self.labels_path, base_name + '.json')
-            label = json.load(open(label_path, 'r'))
-            json_info['layout'] = label['layout']
-
-            ########## 6. label_relations ##########
-            label['layout'] = np.array(label['layout'])
-            label_relations = table_to_relations(label)
-            json_info['label_relations'] = label_relations
-
-            ########## 7. label_htmls ##########
-            # label_htmls = table_to_html(label)
-            # label_htmls = format_html(label_htmls)
-            # json_info['label_htmls'] = label_htmls
-
-            json.dump(json_info, open(json_filepath, 'w'), indent=4)
+            json_path = os.path.join(self.structure_txt_folder, f"{base_name}.json")
+            json.dump(train_label, open(json_path, 'w'), indent=4)
 
 
     def parse_images(self, img_chunks):

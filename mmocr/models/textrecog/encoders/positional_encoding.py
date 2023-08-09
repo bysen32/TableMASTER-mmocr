@@ -27,9 +27,9 @@ class PositionalEncoding(BaseEncoder):
     def forward(self, feat, **kwargs):
 
         if len(feat.shape) > 3:
-            b, c, h, w = feat.shape
-            feat = feat.view(b, c, h*w) # flatten 2D feature map
-            feat = feat.permute((0,2,1)) # b, h*w, c
+            b, c, h, w = feat.shape     # (1, 512, 60, 60)
+            feat = feat.view(b, c, h*w) # flatten 2D feature map (1,512,3600)
+            feat = feat.permute((0,2,1)) # b, h*w, c (1, 3600, 512)
 
         feat = feat + self.pe[:, :feat.size(1)] # pe 1*5000*512
         return self.dropout(feat)

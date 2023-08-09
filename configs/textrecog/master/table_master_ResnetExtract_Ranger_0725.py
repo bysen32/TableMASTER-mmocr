@@ -148,7 +148,6 @@ train_pipeline = [
         meta_keys=[
             'filename', 'ori_shape', 'img_shape', 'text', 'scale_factor',
             'bbox', 'bbox_masks', 'pad_shape',
-            'rc_label', 'layout_label',
         ]),
 ]
 
@@ -282,7 +281,7 @@ lr_config = dict(
 total_epochs = 30
 
 # evaluation
-evaluation = dict(interval=2, metric='acc')
+evaluation = dict(start=25, interval=2, metric='acc')
 
 # fp16
 fp16 = dict(loss_scale='dynamic')

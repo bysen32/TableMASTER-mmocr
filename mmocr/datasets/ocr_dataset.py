@@ -49,11 +49,11 @@ class OCRDataset(BaseDataset):
 class TEDSDataset(BaseDataset):
 
     def pre_pipeline(self, results):
-        results['img_prefix'] = self.img_prefix
+        # results['img_prefix'] = self.img_prefix
         results['img_info']['ann_file'] = self.ann_file
 
         results['text']         = results['img_info']['text']
-        results['rc_label']     = results['img_info']['rc_label']
+        # results['rc_label']     = results['img_info']['rc_label']
         # results['layout_label'] = results['img_info']['layout_label']
         # results['html_label']   = results['img_info']['html_label']
 
